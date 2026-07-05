@@ -2,7 +2,7 @@ const { query } = require('../config/db');
 
 const getTickets = async (req, res, next) => {
   try {
-    const { status, search, page = 1, limit = 10 } = req.query;
+    const { status, search, page = 1, limit = 10, technician_id } = req.query;
     const offset = (page - 1) * limit;
 
     let whereClause = 'WHERE 1=1';
@@ -21,6 +21,12 @@ const getTickets = async (req, res, next) => {
       paramIndex++;
     }
 
+    if (technician_id) {
+      whereClause += ` AND t.assigned_technician_id = $${paramIndex}`;
+      params.push(technician_id);
+      paramIndex++;
+    }
+
     const countResult = await query(
       `SELECT COUNT(*) FROM tickets t LEFT JOIN clients c ON t.client_id = c.id ${whereClause}`,
       params
@@ -29,7 +35,7 @@ const getTickets = async (req, res, next) => {
     const totalPages = Math.ceil(totalItems / limit);
 
     const result = await query(
-      `SELECT t.*, c.fullname AS client_name, c.whatsapp AS client_whatsapp, c.address AS client_address,
+      `SELECT t.*, c.fullname AS client_name, c.whatsapp AS client_whatsapp, c.address AS client_address, c.coordinates AS client_coordinates,
               u.fullname AS technician_name
        FROM tickets t
        LEFT JOIN clients c ON t.client_id = c.id
