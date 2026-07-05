@@ -14,6 +14,7 @@ CREATE TABLE clients (
  qr_token VARCHAR(255) UNIQUE NOT NULL,
  fullname VARCHAR(100) NOT NULL,
  whatsapp VARCHAR(20) NOT NULL,
+ password_hash VARCHAR(255),
  address TEXT NOT NULL,
  coordinates POINT,
  mikrotik_profile VARCHAR(50) NOT NULL,

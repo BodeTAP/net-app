@@ -12,6 +12,10 @@ import Scanner from './pages/technician/Scanner';
 import ODPView from './pages/technician/ODPView';
 import ClientStatus from './pages/technician/ClientStatus';
 import TechnicianMap from './pages/technician/TechnicianMap';
+import ClientLogin from './pages/client/ClientLogin';
+import ClientDashboard from './pages/client/ClientDashboard';
+import ClientInvoices from './pages/client/ClientInvoices';
+import ClientTickets from './pages/client/ClientTickets';
 
 function App() {
   return (
@@ -32,6 +36,13 @@ function App() {
         <Route path="/technician/map" element={<TechnicianMap />} />
         <Route path="/technician/odp/:id" element={<ODPView />} />
         <Route path="/technician/client/:id" element={<ClientStatus />} />
+        
+        {/* Client Routes */}
+        <Route path="/client/login" element={<ClientLogin />} />
+        <Route path="/client/dashboard" element={<ClientDashboard />} />
+        <Route path="/client/invoices" element={<ClientInvoices />} />
+        <Route path="/client/tickets" element={<ClientTickets />} />
+        <Route path="/client" element={<Navigate to="/client/dashboard" replace />} />
         
         {/* Redirect root to login */}
         <Route path="/" element={<Navigate to="/login" replace />} />
