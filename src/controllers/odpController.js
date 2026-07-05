@@ -79,7 +79,7 @@ const releasePort = async (req, res, next) => {
 const getOdps = async (req, res, next) => {
   try {
     const result = await query(`
-      SELECT o.id, o.qr_token, o.name, o.total_ports, o.coordinates, o.created_at,
+      SELECT o.id, o.qr_token, o.name, o.total_ports, o.coordinates, o.created_at, o.odc_id,
         COUNT(p.id) as used_ports
       FROM odps o
       LEFT JOIN port_assignments p ON o.id = p.odp_id AND p.status != 'FREE'
@@ -98,7 +98,7 @@ const getOdps = async (req, res, next) => {
 
 const createOdp = async (req, res, next) => {
   try {
-    const { name, total_ports, coordinates } = req.body; // coordinates: { lat, lng }
+    const { name, total_ports, coordinates, odc_id } = req.body; // coordinates: { lat, lng }
     
     if (!name || !coordinates || coordinates.lat === undefined || coordinates.lng === undefined) {
       return res.status(400).json({ status: 'error', message: 'Nama dan koordinat wajib diisi' });
@@ -111,10 +111,10 @@ const createOdp = async (req, res, next) => {
     const pointStr = `(${coordinates.lng}, ${coordinates.lat})`;
 
     const result = await query(`
-      INSERT INTO odps (id, qr_token, name, total_ports, coordinates)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO odps (id, qr_token, name, total_ports, coordinates, odc_id)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
-    `, [id, qr_token, name, total_ports || 8, pointStr]);
+    `, [id, qr_token, name, total_ports || 8, pointStr, odc_id || null]);
 
     res.status(201).json({
       status: 'success',

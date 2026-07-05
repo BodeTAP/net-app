@@ -28,10 +28,11 @@ const getClients = async (req, res, next) => {
     const totalPages = Math.ceil(totalItems / limit);
 
     const result = await query(`
-      SELECT id, qr_token, fullname, whatsapp, address, coordinates, mikrotik_profile, monthly_fee, billing_cycle_date, is_active, created_at 
-      FROM clients 
-      ${whereClause}
-      ORDER BY created_at DESC
+      SELECT c.id, c.qr_token, c.fullname, c.whatsapp, c.address, c.coordinates, c.mikrotik_profile, c.monthly_fee, c.billing_cycle_date, c.is_active, c.created_at, p.odp_id
+      FROM clients c
+      LEFT JOIN port_assignments p ON c.id = p.client_id
+      ${whereClause.replace(/(\w+)/g, (match) => ['is_active', 'fullname', 'whatsapp', 'id'].includes(match) ? `c.${match}` : match)}
+      ORDER BY c.created_at DESC
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `, [...params, parseInt(limit), parseInt(offset)]);
     
@@ -154,4 +155,35 @@ const deleteClient = async (req, res, next) => {
   }
 };
 
-module.exports = { getClients, getClientDetails, createClient, updateClient, deleteClient };
+const updateClientLocation = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { lat, lng } = req.body;
+    
+    if (!lat || !lng) {
+      return res.status(400).json({ status: 'error', message: 'Latitude and longitude are required' });
+    }
+
+    const result = await query(
+      'UPDATE clients SET coordinates = point($1, $2) WHERE id = $3 RETURNING *',
+      [lng, lat, id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ status: 'error', message: 'Client not found' });
+    }
+
+    res.status(200).json({ status: 'success', message: 'Location updated', data: result.rows[0] });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  getClients,
+  getClientDetails,
+  createClient,
+  updateClient,
+  deleteClient,
+  updateClientLocation
+};

@@ -7,6 +7,7 @@ router.get('/', authenticate, clientController.getClients);
 router.get('/:id', authenticate, clientController.getClientDetails);
 router.post('/', authenticate, authorize(['SUPERADMIN', 'ADMIN_BILLING']), clientController.createClient);
 router.patch('/:id', authenticate, authorize(['SUPERADMIN', 'ADMIN_BILLING']), clientController.updateClient);
+router.put('/:id/location', authenticate, authorize(['SUPERADMIN', 'TECHNICIAN']), clientController.updateClientLocation);
 router.delete('/:id', authenticate, authorize(['SUPERADMIN']), clientController.deleteClient);
 
 module.exports = router;

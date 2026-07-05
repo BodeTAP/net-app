@@ -1,11 +1,15 @@
+import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Activity, Signal, Zap, AlertTriangle } from 'lucide-react';
+import { Activity, Signal, Zap, AlertTriangle, MapPin, Loader } from 'lucide-react';
+import axios from 'axios';
 import TechnicianLayout from '../../components/TechnicianLayout';
 
 export default function ClientStatus() {
   const location = useLocation();
   const navigate = useNavigate();
   const data = location.state?.data;
+  
+  const [updatingGps, setUpdatingGps] = useState(false);
 
   if (!data) {
     return (
@@ -20,6 +24,34 @@ export default function ClientStatus() {
 
   const { client, diagnostics } = data;
   const isOnline = diagnostics.status === 'ONLINE';
+
+  const handleUpdateLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolokasi tidak didukung oleh browser Anda");
+      return;
+    }
+
+    setUpdatingGps(true);
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      try {
+        const token = localStorage.getItem('token');
+        await axios.put(`/api/v1/clients/${client.id}/location`, {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        alert('Lokasi pelanggan berhasil diperbarui!');
+      } catch (err) {
+        alert(err.response?.data?.message || 'Gagal memperbarui lokasi');
+      } finally {
+        setUpdatingGps(false);
+      }
+    }, (error) => {
+      setUpdatingGps(false);
+      alert('Gagal mendapatkan lokasi GPS: ' + error.message);
+    }, { enableHighAccuracy: true });
+  };
 
   return (
     <TechnicianLayout>
@@ -39,6 +71,16 @@ export default function ClientStatus() {
           </div>
           <div className="text-sm text-muted">
             <strong>MikroTik Profile:</strong> <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded">{client.mikrotik_profile}</span>
+          </div>
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <button 
+              onClick={handleUpdateLocation}
+              disabled={updatingGps}
+              className="w-full flex items-center justify-center gap-2 bg-blue-50 text-blue-700 hover:bg-blue-100 py-2.5 rounded-lg font-medium transition-colors border border-blue-200"
+            >
+              {updatingGps ? <Loader size={18} className="animate-spin" /> : <MapPin size={18} />}
+              {updatingGps ? 'Mendeteksi GPS...' : 'Set Lokasi Saat Ini (GPS)'}
+            </button>
           </div>
         </div>
 
