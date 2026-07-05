@@ -15,6 +15,7 @@ import TechnicianMap from './pages/technician/TechnicianMap';
 import ClientLogin from './pages/client/ClientLogin';
 import ClientDashboard from './pages/client/ClientDashboard';
 import ClientInvoices from './pages/client/ClientInvoices';
+import InvoiceDetail from './pages/client/InvoiceDetail';
 import ClientTickets from './pages/client/ClientTickets';
 
 function App() {
@@ -41,6 +42,7 @@ function App() {
         <Route path="/client/login" element={<ClientLogin />} />
         <Route path="/client/dashboard" element={<ClientDashboard />} />
         <Route path="/client/invoices" element={<ClientInvoices />} />
+        <Route path="/client/invoice/:id" element={<InvoiceDetail />} />
         <Route path="/client/tickets" element={<ClientTickets />} />
         <Route path="/client" element={<Navigate to="/client/dashboard" replace />} />
         

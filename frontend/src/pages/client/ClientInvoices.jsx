@@ -45,24 +45,8 @@ export default function ClientInvoices() {
           <p className="text-sm text-gray-500 mt-1">Riwayat pembayaran layanan internet</p>
         </div>
 
-        {/* Payment Instructions (Static for now as discussed) */}
-        <div className="bg-blue-50 border border-blue-100 rounded-3xl p-5 mb-6">
-          <h3 className="text-sm font-bold text-blue-900 mb-2">Cara Pembayaran Manual</h3>
-          <p className="text-xs text-blue-700 leading-relaxed mb-3">
-            Silakan transfer sesuai nominal tagihan yang belum lunas ke rekening berikut:
-          </p>
-          <div className="bg-white p-3 rounded-xl border border-blue-100 flex justify-between items-center mb-2">
-            <div>
-              <p className="text-[10px] font-bold text-gray-400 uppercase">Bank BCA</p>
-              <p className="font-mono font-bold text-sm">8720 123 456</p>
-            </div>
-            <p className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">A.n. NetOps ISP</p>
-          </div>
-          <p className="text-[10px] text-blue-600/80 italic mt-2">
-            *Konfirmasi pembayaran otomatis setelah 10 menit, atau hubungi admin jika terisolir.
-          </p>
-        </div>
-
+        {/* Payment Instructions have been moved to Invoice Detail Page */}
+        
         {loading ? (
           <div className="flex justify-center py-10">
             <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
@@ -77,7 +61,11 @@ export default function ClientInvoices() {
         ) : (
           <div className="space-y-3">
             {invoices.map((inv) => (
-              <div key={inv.id} className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col">
+              <div 
+                key={inv.id} 
+                onClick={() => navigate(`/client/invoice/${inv.id}`)}
+                className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col cursor-pointer active:scale-95 transition-transform"
+              >
                 <div className="flex justify-between items-start mb-3">
                   <div>
                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{inv.id}</span>

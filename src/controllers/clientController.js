@@ -1,5 +1,6 @@
 const { query } = require('../config/db');
 const crypto = require('crypto');
+const bcrypt = require('bcrypt');
 
 const getClients = async (req, res, next) => {
   try {
@@ -84,13 +85,17 @@ const createClient = async (req, res, next) => {
     const qr_token = crypto.randomUUID();
 
     const insertQuery = `
-      INSERT INTO clients (id, qr_token, fullname, whatsapp, address, mikrotik_profile, monthly_fee, billing_cycle_date)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      INSERT INTO clients (id, qr_token, fullname, whatsapp, address, mikrotik_profile, monthly_fee, billing_cycle_date, password_hash)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *
     `;
     
+    // Default password is whatsapp number (digits only)
+    const password = whatsapp.replace(/\D/g, '');
+    const password_hash = await bcrypt.hash(password, 10);
+
     const result = await query(insertQuery, [
-      id, qr_token, fullname, whatsapp, address, mikrotik_profile, monthly_fee, billing_cycle_date || 1
+      id, qr_token, fullname, whatsapp, address, mikrotik_profile, monthly_fee, billing_cycle_date || 1, password_hash
     ]);
 
     res.status(201).json({

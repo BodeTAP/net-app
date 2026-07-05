@@ -61,6 +61,8 @@ CREATE TABLE invoices (
  due_date DATE NOT NULL,
  status VARCHAR(20) DEFAULT 'UNPAID', -- UNPAID, PAID, OVERDUE
  payment_method VARCHAR(50),
+ payment_reference VARCHAR(100),
+ payment_url TEXT,
  paid_at TIMESTAMP,
  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

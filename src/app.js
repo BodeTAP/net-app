@@ -25,6 +25,7 @@ const odpRoutes = require('./routes/odpRoutes');
 const odcRoutes = require('./routes/odcRoutes');
 const coverageRoutes = require('./routes/coverageRoutes');
 const clientAppRoutes = require('./routes/clientAppRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
@@ -38,6 +39,7 @@ app.use('/api/v1/odps', odpRoutes); // Handles both mobile scan and admin dashbo
 app.use('/api/v1/odcs', odcRoutes);
 app.use('/api/v1/coverages', coverageRoutes);
 app.use('/api/v1/client-app', clientAppRoutes);
+app.use('/api/v1/payment', paymentRoutes);
 
 // Centralized error handling middleware
 const errorHandler = require('./middlewares/errorHandler');

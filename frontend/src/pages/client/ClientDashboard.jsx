@@ -101,7 +101,7 @@ export default function ClientDashboard() {
                 Rp {Number(currentInvoice.amount).toLocaleString('id-ID')}
               </h4>
               <button 
-                onClick={() => navigate('/client/invoices')}
+                onClick={() => navigate(`/client/invoice/${currentInvoice.id}`)}
                 className="w-full bg-gray-900 text-white py-3 rounded-xl font-bold text-sm active:scale-95 transition-transform"
               >
                 Cara Pembayaran
