@@ -11,6 +11,7 @@ import TechnicianDashboard from './pages/technician/TechnicianDashboard';
 import Scanner from './pages/technician/Scanner';
 import ODPView from './pages/technician/ODPView';
 import ClientStatus from './pages/technician/ClientStatus';
+import TechnicianMap from './pages/technician/TechnicianMap';
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
         {/* Technician Routes */}
         <Route path="/technician" element={<TechnicianDashboard />} />
         <Route path="/technician/scan" element={<Scanner />} />
+        <Route path="/technician/map" element={<TechnicianMap />} />
         <Route path="/technician/odp/:id" element={<ODPView />} />
         <Route path="/technician/client/:id" element={<ClientStatus />} />
         

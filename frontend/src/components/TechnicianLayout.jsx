@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, QrCode, LogOut } from 'lucide-react';
+import { Home, QrCode, LogOut, Map } from 'lucide-react';
 
 export default function TechnicianLayout({ children }) {
   const location = useLocation();
@@ -12,6 +12,7 @@ export default function TechnicianLayout({ children }) {
 
   const navItems = [
     { name: 'Home', path: '/technician', icon: Home },
+    { name: 'Map', path: '/technician/map', icon: Map },
     { name: 'Scan', path: '/technician/scan', icon: QrCode },
   ];
 
