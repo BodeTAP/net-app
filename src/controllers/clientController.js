@@ -1,0 +1,157 @@
+const { query } = require('../config/db');
+const crypto = require('crypto');
+
+const getClients = async (req, res, next) => {
+  try {
+    const { search, status, page = 1, limit = 10 } = req.query;
+    const offset = (page - 1) * limit;
+
+    let whereClause = 'WHERE 1=1';
+    const params = [];
+    let paramIndex = 1;
+
+    if (status && status !== 'ALL') {
+      whereClause += ` AND is_active = $${paramIndex}`;
+      params.push(status === 'ACTIVE');
+      paramIndex++;
+    }
+
+    if (search) {
+      whereClause += ` AND (fullname ILIKE $${paramIndex} OR whatsapp ILIKE $${paramIndex} OR id ILIKE $${paramIndex})`;
+      params.push(`%${search}%`);
+      paramIndex++;
+    }
+
+    // Get total count
+    const countResult = await query(`SELECT COUNT(*) FROM clients ${whereClause}`, params);
+    const totalItems = parseInt(countResult.rows[0].count);
+    const totalPages = Math.ceil(totalItems / limit);
+
+    const result = await query(`
+      SELECT id, qr_token, fullname, whatsapp, address, coordinates, mikrotik_profile, monthly_fee, billing_cycle_date, is_active, created_at 
+      FROM clients 
+      ${whereClause}
+      ORDER BY created_at DESC
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+    `, [...params, parseInt(limit), parseInt(offset)]);
+    
+    res.status(200).json({
+      status: 'success',
+      data: result.rows,
+      pagination: { currentPage: parseInt(page), totalPages, totalItems, limit: parseInt(limit) }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getClientDetails = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // 1. Get client basic data
+    const clientResult = await query('SELECT * FROM clients WHERE id = $1', [id]);
+    if (clientResult.rows.length === 0) {
+      return res.status(404).json({ status: 'error', message: 'Pelanggan tidak ditemukan' });
+    }
+    const client = clientResult.rows[0];
+
+    // 2. Get client's invoices
+    const invoicesResult = await query('SELECT id, amount, due_date, status, paid_at FROM invoices WHERE client_id = $1 ORDER BY due_date DESC LIMIT 10', [id]);
+    
+    // 3. Get client's tickets
+    const ticketsResult = await query('SELECT id, title, status, created_at FROM tickets WHERE client_id = $1 ORDER BY created_at DESC LIMIT 10', [id]);
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        ...client,
+        recent_invoices: invoicesResult.rows,
+        recent_tickets: ticketsResult.rows
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const createClient = async (req, res, next) => {
+  try {
+    const { fullname, whatsapp, address, mikrotik_profile, monthly_fee, billing_cycle_date } = req.body;
+    
+    const id = `CL-${Date.now()}`;
+    const qr_token = crypto.randomUUID();
+
+    const insertQuery = `
+      INSERT INTO clients (id, qr_token, fullname, whatsapp, address, mikrotik_profile, monthly_fee, billing_cycle_date)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *
+    `;
+    
+    const result = await query(insertQuery, [
+      id, qr_token, fullname, whatsapp, address, mikrotik_profile, monthly_fee, billing_cycle_date || 1
+    ]);
+
+    res.status(201).json({
+      status: 'success',
+      data: result.rows[0]
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateClient = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { fullname, whatsapp, address, mikrotik_profile, monthly_fee, billing_cycle_date, is_active } = req.body;
+
+    let updateFields = [];
+    let params = [];
+    let paramIndex = 1;
+
+    if (fullname) { updateFields.push(`fullname = $${paramIndex}`); params.push(fullname); paramIndex++; }
+    if (whatsapp) { updateFields.push(`whatsapp = $${paramIndex}`); params.push(whatsapp); paramIndex++; }
+    if (address) { updateFields.push(`address = $${paramIndex}`); params.push(address); paramIndex++; }
+    if (mikrotik_profile) { updateFields.push(`mikrotik_profile = $${paramIndex}`); params.push(mikrotik_profile); paramIndex++; }
+    if (monthly_fee) { updateFields.push(`monthly_fee = $${paramIndex}`); params.push(monthly_fee); paramIndex++; }
+    if (billing_cycle_date) { updateFields.push(`billing_cycle_date = $${paramIndex}`); params.push(billing_cycle_date); paramIndex++; }
+    if (is_active !== undefined) { updateFields.push(`is_active = $${paramIndex}`); params.push(is_active); paramIndex++; }
+
+    if (updateFields.length === 0) {
+      return res.status(400).json({ status: 'error', message: 'Tidak ada data yang diubah' });
+    }
+
+    params.push(id);
+    const result = await query(
+      `UPDATE clients SET ${updateFields.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+      params
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ status: 'error', message: 'Pelanggan tidak ditemukan' });
+    }
+
+    res.status(200).json({ status: 'success', data: result.rows[0] });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteClient = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    // We do soft delete by setting is_active = false
+    const result = await query('UPDATE clients SET is_active = FALSE WHERE id = $1 RETURNING *', [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ status: 'error', message: 'Pelanggan tidak ditemukan' });
+    }
+
+    res.status(200).json({ status: 'success', message: 'Pelanggan berhasil dinonaktifkan' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { getClients, getClientDetails, createClient, updateClient, deleteClient };
