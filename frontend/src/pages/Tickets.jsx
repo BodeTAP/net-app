@@ -384,6 +384,18 @@ export default function Tickets() {
                 <p className="text-xs text-muted mb-1">Tanggal Dibuat</p>
                 <p className="text-sm text-text">{new Date(selectedTicket.created_at).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
               </div>
+              {selectedTicket.closing_photo_url && (
+                <div className="col-span-1 md:col-span-2 mt-2">
+                  <p className="text-xs text-muted mb-2">Foto Bukti Pekerjaan</p>
+                  <div className="w-full h-48 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                    <img 
+                      src={`http://localhost:3000${selectedTicket.closing_photo_url}`} 
+                      alt="Bukti Pekerjaan" 
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
             <div className="px-6 py-4 border-t border-border bg-gray-50 flex gap-2 justify-end">
               {selectedTicket.status === 'OPEN' && (
