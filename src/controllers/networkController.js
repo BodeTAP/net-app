@@ -1,6 +1,6 @@
 const { query } = require('../config/db');
 const mikrotik = require('../services/mikrotik');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 
 const getTelemetry = async (req, res, next) => {
