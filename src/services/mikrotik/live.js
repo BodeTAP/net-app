@@ -1,20 +1,5 @@
-/**
- * MikroTik Live Service
- * 
- * Implementasi nyata yang terhubung langsung ke RouterOS API.
- * 
- * PERSIAPAN:
- * 1. Install library: npm install routeros-client
- * 2. Isi variabel di .env:
- *    MIKROTIK_HOST=192.168.88.1
- *    MIKROTIK_USER=admin
- *    MIKROTIK_PASS=password_anda
- *    MIKROTIK_PORT=8728
- * 3. Ubah MIKROTIK_MODE=live di .env
- * 
- * CATATAN: Setiap fungsi di file ini HARUS memiliki signature yang
- * identik dengan mock.js agar bisa saling menggantikan (pluggable).
- */
+const { RouterOSClient } = require('routeros-client');
+const { query } = require('../../config/db');
 
 const config = {
   host: process.env.MIKROTIK_HOST || '192.168.88.1',
@@ -23,120 +8,217 @@ const config = {
   port: parseInt(process.env.MIKROTIK_PORT) || 8728,
 };
 
-// TODO: Uncomment setelah install routeros-client
-// const { RouterOSClient } = require('routeros-client');
+const wanIface = process.env.MIKROTIK_WAN_IFACE || 'ether1';
 
-const notConfigured = (funcName) => {
-  throw new Error(
-    `[MIKROTIK LIVE] Fungsi "${funcName}" belum dikonfigurasi. ` +
-    `Pastikan library routeros-client sudah terinstall dan kredensial di .env sudah benar.`
-  );
+const execMikrotik = async (callback) => {
+  const client = new RouterOSClient(config);
+  try {
+    const conn = await client.connect();
+    const result = await callback(conn);
+    client.close();
+    return result;
+  } catch (error) {
+    client.close();
+    console.error('[MIKROTIK LIVE ERROR]', error.message);
+    throw error;
+  }
 };
 
 const getSystemResource = async () => {
-  notConfigured('getSystemResource');
-  // Contoh implementasi nyata:
-  // const client = new RouterOSClient({ ...config });
-  // await client.connect();
-  // const [resource] = await client.menu('/system/resource').get();
-  // await client.disconnect();
-  // return {
-  //   cpuLoad: `${resource['cpu-load']}%`,
-  //   memoryUsage: `${Math.round((1 - resource['free-memory'] / resource['total-memory']) * 100)}%`,
-  //   uptime: resource.uptime,
-  // };
+  return execMikrotik(async (conn) => {
+    const [resource] = await conn.menu('/system/resource').get();
+    
+    // Parse memory
+    const freeMem = parseInt(resource['free-memory']);
+    const totalMem = parseInt(resource['total-memory']);
+    const memoryUsage = Math.round((1 - (freeMem / totalMem)) * 100);
+
+    return {
+      cpuLoad: `${resource['cpu-load']}%`,
+      memoryUsage: `${memoryUsage}%`,
+      uptime: resource.uptime,
+    };
+  });
 };
 
 const getTrafficStats = async () => {
-  notConfigured('getTrafficStats');
-  // Contoh implementasi nyata:
-  // const client = new RouterOSClient({ ...config });
-  // await client.connect();
-  // const interfaces = await client.menu('/interface').get();
-  // const ether1 = interfaces.find(i => i.name === 'ether1');
-  // await client.disconnect();
-  // return {
-  //   rxTraffic: `${(ether1['rx-byte'] / 1e6).toFixed(2)} Mbps`,
-  //   txTraffic: `${(ether1['tx-byte'] / 1e6).toFixed(2)} Mbps`,
-  // };
+  return execMikrotik(async (conn) => {
+    const interfaces = await conn.menu('/interface').where('name', wanIface).get();
+    if (interfaces.length === 0) {
+      return { rxTraffic: '0 Mbps', txTraffic: '0 Mbps' };
+    }
+    
+    const iface = interfaces[0];
+    const rxByte = parseInt(iface['rx-byte']) || 0;
+    const txByte = parseInt(iface['tx-byte']) || 0;
+    
+    // We convert bytes to approx Mbps (this is total bytes, but usually we want current rate, 
+    // to get current rate in RouterOS we'd use `/interface/monitor-traffic`, but `routeros-client` 
+    // handles continuous streams differently. For simplicity and matching the mock, we'll return 
+    // a formatted value, or we could use `/interface/monitor-traffic` with `once`).
+    
+    const monitor = await conn.menu('/interface').where('name', wanIface).execute('monitor-traffic', { once: true });
+    
+    if (monitor && monitor.length > 0) {
+      const rxBps = parseInt(monitor[0]['rx-bits-per-second']) || 0;
+      const txBps = parseInt(monitor[0]['tx-bits-per-second']) || 0;
+      
+      return {
+        rxTraffic: `${(rxBps / 1e6).toFixed(2)} Mbps`,
+        txTraffic: `${(txBps / 1e6).toFixed(2)} Mbps`,
+      };
+    }
+
+    return {
+      rxTraffic: `0 Mbps`,
+      txTraffic: `0 Mbps`,
+    };
+  });
 };
 
-const createQueue = async (clientId, profile, ipAddress) => {
-  notConfigured('createQueue');
-  // Contoh implementasi nyata:
-  // const client = new RouterOSClient({ ...config });
-  // await client.connect();
-  // await client.menu('/queue/simple').add({
-  //   name: `client-${clientId}`,
-  //   target: `${ipAddress}/32`,
-  //   'max-limit': profile === '10M' ? '10M/10M' : profile === '20M' ? '20M/20M' : '50M/50M',
-  // });
-  // await client.disconnect();
-  // return { success: true, message: `Queue client-${clientId} berhasil dibuat.` };
+const createQueue = async (clientId, profile, ipAddress, whatsapp) => {
+  // We use this function to create PPPoE Secret
+  const password = whatsapp || '123456';
+  
+  return execMikrotik(async (conn) => {
+    const menu = conn.menu('/ppp/secret');
+    
+    // Check if exists
+    const exists = await menu.where('name', clientId).get();
+    if (exists.length > 0) {
+      await menu.where('name', clientId).update({
+        password: password,
+        profile: profile || 'default',
+        disabled: 'no'
+      });
+    } else {
+      await menu.add({
+        name: clientId,
+        password: password,
+        profile: profile || 'default',
+        service: 'pppoe'
+      });
+    }
+    
+    console.log(`[MIKROTIK LIVE] ✅ PPPoE Secret dibuat/diupdate → Client: ${clientId}`);
+    return { success: true, message: `PPPoE Secret ${clientId} berhasil dibuat.` };
+  });
 };
 
 const removeQueue = async (clientId) => {
-  notConfigured('removeQueue');
-  // Contoh implementasi nyata:
-  // const client = new RouterOSClient({ ...config });
-  // await client.connect();
-  // const queues = await client.menu('/queue/simple').where('name', `client-${clientId}`).get();
-  // if (queues.length > 0) {
-  //   await client.menu('/queue/simple').where('name', `client-${clientId}`).remove();
-  // }
-  // await client.disconnect();
-  // return { success: true, message: `Queue client-${clientId} berhasil dihapus.` };
+  return execMikrotik(async (conn) => {
+    const menu = conn.menu('/ppp/secret');
+    const exists = await menu.where('name', clientId).get();
+    if (exists.length > 0) {
+      await menu.where('name', clientId).remove();
+    }
+    
+    // Also kill active connection
+    const activeMenu = conn.menu('/ppp/active');
+    const active = await activeMenu.where('name', clientId).get();
+    if (active.length > 0) {
+      for (const sess of active) {
+        await activeMenu.where('.id', sess['.id']).remove();
+      }
+    }
+    
+    console.log(`[MIKROTIK LIVE] ❌ PPPoE dihapus → Client: ${clientId}`);
+    return { success: true, message: `PPPoE ${clientId} berhasil dihapus.` };
+  });
 };
 
 const addToIsolir = async (ipAddress, clientId) => {
-  notConfigured('addToIsolir');
-  // Contoh implementasi nyata:
-  // const client = new RouterOSClient({ ...config });
-  // await client.connect();
-  // await client.menu('/ip/firewall/address-list').add({
-  //   list: 'isolir',
-  //   address: ipAddress,
-  //   comment: `Isolir client-${clientId}`,
-  // });
-  // await client.disconnect();
-  // return { success: true, message: `IP ${ipAddress} berhasil diisolir.` };
+  return execMikrotik(async (conn) => {
+    const menu = conn.menu('/ppp/secret');
+    const exists = await menu.where('name', clientId).get();
+    if (exists.length > 0) {
+      await menu.where('name', clientId).update({ disabled: 'yes' });
+    }
+    
+    // Kill active connection so they disconnect immediately
+    const activeMenu = conn.menu('/ppp/active');
+    const active = await activeMenu.where('name', clientId).get();
+    if (active.length > 0) {
+      for (const sess of active) {
+        await activeMenu.where('.id', sess['.id']).remove();
+      }
+    }
+    
+    console.log(`[MIKROTIK LIVE] 🔒 ISOLIR (Disable PPPoE) → Client: ${clientId}`);
+    return { success: true, message: `Client ${clientId} berhasil diisolir (PPPoE Disabled).` };
+  });
 };
 
 const removeFromIsolir = async (ipAddress, clientId) => {
-  notConfigured('removeFromIsolir');
-  // Contoh implementasi nyata:
-  // const client = new RouterOSClient({ ...config });
-  // await client.connect();
-  // const entries = await client.menu('/ip/firewall/address-list')
-  //   .where('list', 'isolir')
-  //   .where('address', ipAddress)
-  //   .get();
-  // if (entries.length > 0) {
-  //   await client.menu('/ip/firewall/address-list')
-  //     .where('list', 'isolir')
-  //     .where('address', ipAddress)
-  //     .remove();
-  // }
-  // await client.disconnect();
-  // return { success: true, message: `IP ${ipAddress} berhasil dibuka dari isolir.` };
+  return execMikrotik(async (conn) => {
+    const menu = conn.menu('/ppp/secret');
+    const exists = await menu.where('name', clientId).get();
+    if (exists.length > 0) {
+      await menu.where('name', clientId).update({ disabled: 'no' });
+    }
+    
+    console.log(`[MIKROTIK LIVE] 🔓 BUKA ISOLIR (Enable PPPoE) → Client: ${clientId}`);
+    return { success: true, message: `Client ${clientId} berhasil dibuka dari isolir.` };
+  });
 };
 
 const syncAllQueues = async () => {
-  notConfigured('syncAllQueues');
+  // Sync all PPPoE Secrets
+  const result = await query('SELECT id, fullname, whatsapp, mikrotik_profile FROM clients WHERE is_active = TRUE');
+  const clients = result.rows;
+
+  return execMikrotik(async (conn) => {
+    const menu = conn.menu('/ppp/secret');
+    const existingSecrets = await menu.get();
+    
+    let synced = 0;
+    
+    for (const client of clients) {
+      const password = client.whatsapp || '123456';
+      const secret = existingSecrets.find(s => s.name === client.id);
+      
+      if (secret) {
+        // Update if needed
+        if (secret.profile !== client.mikrotik_profile || secret.disabled === 'true') {
+          await menu.where('name', client.id).update({
+            password: password,
+            profile: client.mikrotik_profile || 'default',
+            disabled: 'no'
+          });
+          synced++;
+        }
+      } else {
+        // Create new
+        await menu.add({
+          name: client.id,
+          password: password,
+          profile: client.mikrotik_profile || 'default',
+          service: 'pppoe'
+        });
+        synced++;
+      }
+    }
+    
+    console.log(`[MIKROTIK LIVE] ✅ Sinkronisasi selesai. ${synced} PPPoE Secret di-update/dibuat dari total ${clients.length} klien aktif.`);
+    return {
+      success: true,
+      total: clients.length,
+      message: `Berhasil menyinkronkan ${synced} akun PPPoE ke MikroTik.`,
+    };
+  });
 };
 
 const getActiveQueues = async () => {
-  notConfigured('getActiveQueues');
-  // Contoh implementasi nyata:
-  // const client = new RouterOSClient({ ...config });
-  // await client.connect();
-  // const queues = await client.menu('/queue/simple').get();
-  // await client.disconnect();
-  // return queues.map(q => ({
-  //   name: q.name,
-  //   target: q.target,
-  //   profile: q['max-limit'],
-  // }));
+  return execMikrotik(async (conn) => {
+    const active = await conn.menu('/ppp/active').get();
+    
+    return active.map(sess => ({
+      name: sess.name,         // Actually client.id, but this is what we show in UI for now
+      target: sess.address || 'N/A',
+      profile: sess.service || 'pppoe',
+      uptime: sess.uptime || ''
+    }));
+  });
 };
 
 module.exports = {
