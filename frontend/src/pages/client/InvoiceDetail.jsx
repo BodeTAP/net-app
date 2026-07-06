@@ -135,23 +135,48 @@ export default function InvoiceDetail() {
             <h3 className="font-bold text-gray-800 mb-3 ml-1">Pilih Metode Pembayaran</h3>
             <div className="space-y-3">
               {/* Option 1: Manual Transfer */}
-              <label className={`flex items-center p-4 border rounded-2xl cursor-pointer transition-all ${selectedChannel === 'MANUAL' ? 'border-blue-600 bg-blue-50/50 shadow-md shadow-blue-600/10' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
-                <input 
-                  type="radio" 
-                  name="payment_method" 
-                  value="MANUAL"
-                  checked={selectedChannel === 'MANUAL'}
-                  onChange={() => setSelectedChannel('MANUAL')}
-                  className="w-4 h-4 text-blue-600 focus:ring-blue-500"
-                />
-                <div className="ml-3 flex-1">
-                  <div className="flex items-center gap-2">
-                    <Building2 size={18} className="text-gray-500" />
-                    <span className="font-bold text-sm text-gray-900">Transfer Bank Manual</span>
+              <div className="flex flex-col">
+                <label className={`flex items-center p-4 border rounded-2xl cursor-pointer transition-all ${selectedChannel === 'MANUAL' ? 'border-blue-600 bg-blue-50/50 shadow-md shadow-blue-600/10' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
+                  <input 
+                    type="radio" 
+                    name="payment_method" 
+                    value="MANUAL"
+                    checked={selectedChannel === 'MANUAL'}
+                    onChange={() => setSelectedChannel('MANUAL')}
+                    className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                  />
+                  <div className="ml-3 flex-1">
+                    <div className="flex items-center gap-2">
+                      <Building2 size={18} className="text-gray-500" />
+                      <span className="font-bold text-sm text-gray-900">Transfer Bank Manual</span>
+                    </div>
+                    <p className="text-[11px] text-gray-500 mt-1">Konfirmasi pembayaran ke admin via WA</p>
                   </div>
-                  <p className="text-[11px] text-gray-500 mt-1">Konfirmasi pembayaran ke admin via WA</p>
-                </div>
-              </label>
+                </label>
+                
+                {/* Bank Info Dropdown for Manual */}
+                {selectedChannel === 'MANUAL' && (
+                  <div className="mt-2 p-4 bg-gray-50 border border-gray-200 rounded-xl ml-4 animate-in slide-in-from-top-2">
+                    <p className="text-xs text-gray-700 mb-3 font-medium">Silakan transfer sesuai nominal tagihan ke salah satu rekening berikut:</p>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
+                        <div>
+                          <p className="font-bold text-sm text-blue-800">BCA</p>
+                          <p className="text-[10px] text-gray-500">a/n NetOps Internet</p>
+                        </div>
+                        <p className="font-mono font-bold text-sm">8273 1928 33</p>
+                      </div>
+                      <div className="flex justify-between items-center bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
+                        <div>
+                          <p className="font-bold text-sm text-orange-600">BNI</p>
+                          <p className="text-[10px] text-gray-500">a/n NetOps Internet</p>
+                        </div>
+                        <p className="font-mono font-bold text-sm">0192 8374 65</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Tripay Channels */}
               {channels.map(channel => (
