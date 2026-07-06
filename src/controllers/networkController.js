@@ -101,4 +101,60 @@ const importMikrotik = async (req, res, next) => {
   }
 };
 
-module.exports = { getTelemetry, syncMikrotik, importMikrotik };
+const getProfiles = async (req, res, next) => {
+  try {
+    const mikrotik = require('../services/mikrotik/live');
+    const profiles = await mikrotik.getAllProfiles();
+    res.status(200).json({ status: 'success', data: profiles });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const createProfile = async (req, res, next) => {
+  try {
+    const mikrotik = require('../services/mikrotik/live');
+    await mikrotik.createProfile(req.body);
+    res.status(201).json({ status: 'success', message: 'Profil berhasil dibuat' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateProfile = async (req, res, next) => {
+  try {
+    const mikrotik = require('../services/mikrotik/live');
+    const { id } = req.params; // Using name as ID
+    await mikrotik.updateProfile(id, req.body);
+    res.status(200).json({ status: 'success', message: 'Profil berhasil diupdate' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteProfile = async (req, res, next) => {
+  try {
+    const mikrotik = require('../services/mikrotik/live');
+    const { id } = req.params; // Using name as ID
+    
+    // Check if it's default
+    if (id === 'default' || id === 'default-encryption') {
+      return res.status(400).json({ status: 'error', message: 'Profil default tidak bisa dihapus' });
+    }
+    
+    await mikrotik.deleteProfile(id);
+    res.status(200).json({ status: 'success', message: 'Profil berhasil dihapus' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { 
+  getTelemetry, 
+  syncMikrotik, 
+  importMikrotik,
+  getProfiles,
+  createProfile,
+  updateProfile,
+  deleteProfile
+};

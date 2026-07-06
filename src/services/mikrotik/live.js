@@ -237,6 +237,52 @@ const getPPPoESecrets = async () => {
   });
 };
 
+const getAllProfiles = async () => {
+  return execMikrotik(async (conn) => {
+    const profiles = await conn.menu('/ppp/profile').get();
+    return profiles.map(p => ({
+      id: p['.id'],
+      name: p.name,
+      localAddress: p.localAddress || '',
+      remoteAddress: p.remoteAddress || '',
+      rateLimit: p.rateLimit || '',
+      isDefault: p.default === 'true' || p.default === true
+    }));
+  });
+};
+
+const createProfile = async (data) => {
+  return execMikrotik(async (conn) => {
+    await conn.menu('/ppp/profile').add({
+      name: data.name,
+      'local-address': data.localAddress,
+      'remote-address': data.remoteAddress,
+      'rate-limit': data.rateLimit
+    });
+    return { success: true };
+  });
+};
+
+const updateProfile = async (name, data) => {
+  return execMikrotik(async (conn) => {
+    const updateData = {};
+    if (data.name) updateData.name = data.name;
+    if (data.localAddress !== undefined) updateData['local-address'] = data.localAddress;
+    if (data.remoteAddress !== undefined) updateData['remote-address'] = data.remoteAddress;
+    if (data.rateLimit !== undefined) updateData['rate-limit'] = data.rateLimit;
+    
+    await conn.menu('/ppp/profile').where('name', name).update(updateData);
+    return { success: true };
+  });
+};
+
+const deleteProfile = async (name) => {
+  return execMikrotik(async (conn) => {
+    await conn.menu('/ppp/profile').where('name', name).remove();
+    return { success: true };
+  });
+};
+
 module.exports = {
   getSystemResource,
   getTrafficStats,
@@ -247,4 +293,8 @@ module.exports = {
   syncAllQueues,
   getActiveQueues,
   getPPPoESecrets,
+  getAllProfiles,
+  createProfile,
+  updateProfile,
+  deleteProfile,
 };
