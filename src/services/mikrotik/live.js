@@ -132,32 +132,41 @@ const addToIsolir = async (ipAddress, clientId) => {
     const menu = conn.menu('/ppp/secret');
     const exists = await menu.where('name', clientId).get();
     if (exists.length > 0) {
-      await menu.where('name', clientId).update({ disabled: 'yes' });
+      await menu.where('name', clientId).update({ disabled: 'no', profile: 'expired' });
     }
     
-    // Kill active connection so they disconnect immediately
+    // Kill active connection so they reconnect and get the expired profile/IP
     const activeMenu = conn.menu('/ppp/active');
     const active = await activeMenu.where('name', clientId).get();
     if (active.length > 0) {
-      for (const sess of active) {
-        await activeMenu.where('.id', sess['.id']).remove();
-      }
+      await activeMenu.where('name', clientId).remove();
     }
     
-    console.log(`[MIKROTIK LIVE] 🔒 ISOLIR (Disable PPPoE) → Client: ${clientId}`);
-    return { success: true, message: `Client ${clientId} berhasil diisolir (PPPoE Disabled).` };
+    console.log(`[MIKROTIK LIVE] 🔒 ISOLIR (Set Profile: expired) → Client: ${clientId}`);
+    return { success: true, message: `Client ${clientId} berhasil diisolir (Profile: expired).` };
   });
 };
 
 const removeFromIsolir = async (ipAddress, clientId) => {
   return execMikrotik(async (conn) => {
+    // Cari original profile dari database
+    const dbClient = await query('SELECT mikrotik_profile FROM clients WHERE id = $1', [clientId]);
+    const originalProfile = dbClient.rows.length > 0 ? (dbClient.rows[0].mikrotik_profile || 'default') : 'default';
+
     const menu = conn.menu('/ppp/secret');
     const exists = await menu.where('name', clientId).get();
     if (exists.length > 0) {
-      await menu.where('name', clientId).update({ disabled: 'no' });
+      await menu.where('name', clientId).update({ disabled: 'no', profile: originalProfile });
     }
     
-    console.log(`[MIKROTIK LIVE] 🔓 BUKA ISOLIR (Enable PPPoE) → Client: ${clientId}`);
+    // Kill active connection so they reconnect and get the normal profile/IP
+    const activeMenu = conn.menu('/ppp/active');
+    const active = await activeMenu.where('name', clientId).get();
+    if (active.length > 0) {
+      await activeMenu.where('name', clientId).remove();
+    }
+
+    console.log(`[MIKROTIK LIVE] 🔓 BUKA ISOLIR (Restore Profile: ${originalProfile}) → Client: ${clientId}`);
     return { success: true, message: `Client ${clientId} berhasil dibuka dari isolir.` };
   });
 };
