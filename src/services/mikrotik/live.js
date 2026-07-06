@@ -29,12 +29,12 @@ const getSystemResource = async () => {
     const [resource] = await conn.menu('/system/resource').get();
     
     // Parse memory
-    const freeMem = parseInt(resource['free-memory']);
-    const totalMem = parseInt(resource['total-memory']);
+    const freeMem = parseInt(resource.freeMemory);
+    const totalMem = parseInt(resource.totalMemory);
     const memoryUsage = Math.round((1 - (freeMem / totalMem)) * 100);
 
     return {
-      cpuLoad: `${resource['cpu-load']}%`,
+      cpuLoad: `${resource.cpuLoad}%`,
       memoryUsage: `${memoryUsage}%`,
       uptime: resource.uptime,
     };
