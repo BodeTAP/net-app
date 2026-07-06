@@ -127,7 +127,14 @@ export default function TechnicianDashboard() {
                 </div>
                 <h4 className="font-bold text-text text-sm mb-1">{ticket.title}</h4>
                 {ticket.client_name && (
-                  <p className="text-xs font-medium text-gray-700">Pelanggan: {ticket.client_name}</p>
+                  <div className="mb-1">
+                    <p className="text-xs font-medium text-gray-700">Pelanggan: {ticket.client_name}</p>
+                    {ticket.client_whatsapp && (
+                      <a href={`https://wa.me/${ticket.client_whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="text-xs font-semibold text-green-600 hover:underline inline-flex items-center gap-1 mt-0.5">
+                        <User size={12} className="hidden" /> WA: {ticket.client_whatsapp}
+                      </a>
+                    )}
+                  </div>
                 )}
                 {ticket.client_address && (
                   <p className="text-xs text-muted mt-1">{ticket.client_address}</p>
