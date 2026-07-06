@@ -149,6 +149,16 @@ const deleteProfile = async (req, res, next) => {
   }
 };
 
+const getIPPools = async (req, res, next) => {
+  try {
+    const mikrotik = require('../services/mikrotik/live');
+    const pools = await mikrotik.getIPPools();
+    res.status(200).json({ status: 'success', data: pools });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = { 
   getTelemetry, 
   syncMikrotik, 
@@ -156,5 +166,6 @@ module.exports = {
   getProfiles,
   createProfile,
   updateProfile,
-  deleteProfile
+  deleteProfile,
+  getIPPools
 };

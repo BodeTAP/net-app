@@ -7,6 +7,7 @@ export default function Network() {
   const [telemetry, setTelemetry] = useState(null);
   const [activeClientsCount, setActiveClientsCount] = useState([]);
   const [profiles, setProfiles] = useState([]);
+  const [ipPools, setIpPools] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -39,13 +40,27 @@ export default function Network() {
       setProfiles(res.data.data);
     } catch (err) {
       console.error(err);
-    } finally {
-      setLoading(false);
+    }
+  };
+
+  const fetchIpPools = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get('/api/v1/network/ip-pools', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setIpPools(res.data.data);
+    } catch (err) {
+      console.error(err);
     }
   };
 
   const loadData = async () => {
-    await Promise.all([fetchTelemetry(), fetchProfiles()]);
+    try {
+      await Promise.all([fetchTelemetry(), fetchProfiles(), fetchIpPools()]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -294,7 +309,12 @@ export default function Network() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-text mb-1">Remote Address (IP Pool)</label>
-                  <input type="text" value={formData.remoteAddress} onChange={e => setFormData({...formData, remoteAddress: e.target.value})} className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow" placeholder="Misal: pool1-pppoe" />
+                  <select value={formData.remoteAddress} onChange={e => setFormData({...formData, remoteAddress: e.target.value})} className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow bg-white">
+                    <option value="">-- Pilih IP Pool --</option>
+                    {ipPools.map(pool => (
+                      <option key={pool.name} value={pool.name}>{pool.name}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-text mb-1">Rate Limit (Rx/Tx)</label>

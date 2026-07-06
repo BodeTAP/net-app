@@ -13,4 +13,7 @@ router.post('/profiles', authenticate, authorize(['SUPERADMIN']), networkControl
 router.patch('/profiles/:id', authenticate, authorize(['SUPERADMIN']), networkController.updateProfile);
 router.delete('/profiles/:id', authenticate, authorize(['SUPERADMIN']), networkController.deleteProfile);
 
+// IP Pools
+router.get('/ip-pools', authenticate, authorize(['SUPERADMIN']), networkController.getIPPools);
+
 module.exports = router;

@@ -283,6 +283,16 @@ const deleteProfile = async (name) => {
   });
 };
 
+const getIPPools = async () => {
+  return execMikrotik(async (conn) => {
+    const pools = await conn.menu('/ip/pool').get();
+    return pools.map(p => ({
+      name: p.name,
+      ranges: p.ranges
+    }));
+  });
+};
+
 module.exports = {
   getSystemResource,
   getTrafficStats,
@@ -297,4 +307,5 @@ module.exports = {
   createProfile,
   updateProfile,
   deleteProfile,
+  getIPPools,
 };
