@@ -1,9 +1,13 @@
 const express = require('express');
 const dotenv = require('dotenv');
+const path = require('path');
 
 dotenv.config();
 
 const app = express();
+
+// Serve static files (uploads)
+app.use('/public', express.static(path.join(__dirname, '../public')));
 
 app.use(express.json());
 

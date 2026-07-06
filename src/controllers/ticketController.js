@@ -139,6 +139,36 @@ const updateTicketStatus = async (req, res, next) => {
   }
 };
 
+const resolveTicket = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    
+    // Validasi foto (wajib)
+    if (!req.file) {
+      return res.status(400).json({ status: 'error', message: 'Foto bukti pekerjaan wajib diunggah!' });
+    }
+
+    const photoUrl = `/public/uploads/tickets/${req.file.filename}`;
+
+    const result = await query(
+      `UPDATE tickets SET status = 'RESOLVED', closing_photo_url = $1 WHERE id = $2 RETURNING *`,
+      [photoUrl, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ status: 'error', message: 'Tiket tidak ditemukan' });
+    }
+
+    res.status(200).json({ 
+      status: 'success', 
+      message: 'Tiket berhasil diselesaikan',
+      data: result.rows[0] 
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const deleteTicket = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -178,4 +208,7 @@ const getClients = async (req, res, next) => {
   }
 };
 
-module.exports = { getTickets, getSummary, createTicket, updateTicketStatus, deleteTicket, getTechnicians, getClients };
+module.exports = { getTickets, getSummary, createTicket, updateTicketStatus, deleteTicket,
+  getTechnicians,
+  resolveTicket,
+  getClients };

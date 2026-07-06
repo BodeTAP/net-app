@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { QrCode, ClipboardList, Map, CheckCircle, Clock } from 'lucide-react';
+import { QrCode, ClipboardList, Map, CheckCircle, Clock, Camera, Package, User, Search } from 'lucide-react';
 import TechnicianLayout from '../../components/TechnicianLayout';
+import CameraUpload from '../../components/CameraUpload';
 
 export default function TechnicianDashboard() {
   const navigate = useNavigate();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [resolvingTicketId, setResolvingTicketId] = useState(null);
+  const [activeTab, setActiveTab] = useState('tickets');
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -42,13 +46,35 @@ export default function TechnicianDashboard() {
   const updateTicketStatus = async (ticketId, newStatus) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.patch(`/api/v1/tickets/${ticketId}`, { status: newStatus }, {
+      await axios.patch(`/api/v1/tickets/${ticketId}/status`, { status: newStatus }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      // Refresh tickets
       fetchTickets(user.id, token);
     } catch (error) {
       alert('Gagal mengupdate status tiket');
+    }
+  };
+
+  const handleResolveWithPhoto = async (photoFile) => {
+    try {
+      const token = localStorage.getItem('token');
+      const formData = new FormData();
+      formData.append('photo', photoFile);
+      formData.append('status', 'RESOLVED');
+
+      const res = await axios.put(`/api/v1/tickets/${resolvingTicketId}/resolve`, formData, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      setIsCameraOpen(false);
+      setResolvingTicketId(null);
+      fetchTickets(user.id, token);
+      alert('Tiket berhasil diselesaikan!');
+    } catch (error) {
+      alert('Gagal mengunggah foto dan menyelesaikan tiket');
     }
   };
 
@@ -124,10 +150,13 @@ export default function TechnicianDashboard() {
                   )}
                   {ticket.status === 'IN_PROGRESS' && (
                     <button 
-                      onClick={() => updateTicketStatus(ticket.id, 'RESOLVED')}
+                      onClick={() => {
+                        setResolvingTicketId(ticket.id);
+                        setIsCameraOpen(true);
+                      }}
                       className="w-full text-sm text-white font-medium bg-green-600 py-2 rounded-lg active:bg-green-700 flex justify-center items-center gap-2"
                     >
-                      <CheckCircle size={16} /> Tandai Selesai
+                      <Camera size={16} /> Ambil Foto & Selesai
                     </button>
                   )}
                   
