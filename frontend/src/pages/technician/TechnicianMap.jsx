@@ -64,16 +64,16 @@ export default function TechnicianMap() {
   const fetchData = async () => {
     try {
       const [odpRes, odcRes, clientRes, covRes] = await Promise.all([
-        axios.get('/api/v1/odps', { headers }),
-        axios.get('/api/v1/odcs', { headers }).catch(() => ({ data: { data: [] } })),
-        axios.get('/api/v1/clients?limit=9999', { headers }),
-        axios.get('/api/v1/coverages', { headers }).catch(() => ({ data: { data: [] } }))
+        axios.get('/api/v1/odps', { headers }).catch(e => { console.error('ODP Error', e); return { data: { data: [] } }; }),
+        axios.get('/api/v1/odcs', { headers }).catch(e => { console.error('ODC Error', e); return { data: { data: [] } }; }),
+        axios.get('/api/v1/clients?limit=9999', { headers }).catch(e => { console.error('Client Error', e); return { data: { data: [] } }; }),
+        axios.get('/api/v1/coverages', { headers }).catch(e => { console.error('Coverage Error', e); return { data: { data: [] } }; })
       ]);
 
-      setOdps(odpRes.data.data || []);
-      setOdcs(odcRes.data.data || []);
-      setClients(clientRes.data.data || []);
-      setCoverages(covRes.data.data || []);
+      setOdps(odpRes.data?.data || []);
+      setOdcs(odcRes.data?.data || []);
+      setClients(clientRes.data?.data || []);
+      setCoverages(covRes.data?.data || []);
     } catch (err) {
       console.error("Gagal memuat data GIS:", err);
     }
@@ -154,7 +154,7 @@ export default function TechnicianMap() {
           ))}
 
           {/* ODCs */}
-          {odcs.map(odc => (
+          {odcs.filter(odc => odc.coordinates).map(odc => (
             <Marker 
               key={odc.id} 
               position={[odc.coordinates.y, odc.coordinates.x]} 
@@ -186,7 +186,7 @@ export default function TechnicianMap() {
           ))}
 
           {/* ODPs */}
-          {odps.map(odp => (
+          {odps.filter(odp => odp.coordinates).map(odp => (
             <Marker 
               key={odp.id} 
               position={[odp.coordinates.y, odp.coordinates.x]}
@@ -203,9 +203,9 @@ export default function TechnicianMap() {
 
           {/* Network Topology Lines */}
           {/* ODP -> ODC */}
-          {odps.filter(odp => odp.odc_id).map(odp => {
+          {odps.filter(odp => odp.odc_id && odp.coordinates).map(odp => {
             const odc = odcs.find(o => o.id === odp.odc_id);
-            if (!odc) return null;
+            if (!odc || !odc.coordinates) return null;
             return (
               <Polyline 
                 key={`link-odc-${odp.id}`}
@@ -221,7 +221,7 @@ export default function TechnicianMap() {
           {/* Client -> ODP */}
           {clients.filter(c => c.coordinates && c.odp_id).map(client => {
             const odp = odps.find(o => o.id === client.odp_id);
-            if (!odp) return null;
+            if (!odp || !odp.coordinates) return null;
             return (
               <Polyline 
                 key={`link-client-${client.id}`}
