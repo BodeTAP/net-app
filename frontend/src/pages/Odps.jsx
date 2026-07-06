@@ -8,43 +8,27 @@ import L from 'leaflet';
 import { QRCodeSVG } from 'qrcode.react';
 import Layout from '../components/Layout';
 
-// Fix for default marker icons in Leaflet with Vite/Webpack
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
+import { renderToStaticMarkup } from 'react-dom/server';
 
-// Custom red icon for new ODP placement
-const newOdpIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
+// Custom Icons using Lucide and divIcon (Reliable, no external images needed)
+const createDivIcon = (IconComponent, color, bg) => {
+  return new L.divIcon({
+    className: 'custom-div-icon',
+    html: renderToStaticMarkup(
+      <div style={{ backgroundColor: bg, color: color, padding: '4px', borderRadius: '50%', border: '2px solid white', boxShadow: '0 2px 5px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px' }}>
+        <IconComponent size={16} />
+      </div>
+    ),
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+    popupAnchor: [0, -14]
+  });
+};
 
-// Icon for ODC
-const odcIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-orange.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
-
-// Icon for Client
-const clientIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
+const newOdpIcon = createDivIcon(MapPin, 'white', '#ef4444'); // red
+const odpIcon = createDivIcon(MapPin, 'white', '#3b82f6'); // blue
+const odcIcon = createDivIcon(Server, 'white', '#f97316'); // orange (imported Server above)
+const clientIcon = createDivIcon(Locate, 'white', '#22c55e'); // green
 
 // Helper component to handle map clicks for adding new entity
 function MapClickHelper({ onMapClick, addingEntity }) {
@@ -579,12 +563,11 @@ export default function Odps() {
 
                   {/* Existing ODP Markers */}
                   {layers.odps && odps.map(odp => {
-                    const lat = odp.coordinates.y; // Postgres POINT y = lat
-                    const lng = odp.coordinates.x; // Postgres POINT x = lng
                     return (
                       <Marker 
                         key={odp.id} 
-                        position={[lat, lng]}
+                        position={[odp.coordinates.y, odp.coordinates.x]}
+                        icon={odpIcon}
                         eventHandlers={{
                           click: () => {
                             if (!addingEntity) {
