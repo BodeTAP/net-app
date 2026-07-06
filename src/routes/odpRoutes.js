@@ -9,7 +9,7 @@ router.post('/assign', authenticate, odpController.assignPort);
 router.post('/release', authenticate, odpController.releasePort);
 
 // Admin Dashboard Routes (Requires Admin)
-router.get('/', authenticate, authorize(['SUPERADMIN', 'ADMIN_BILLING']), odpController.getOdps);
+router.get('/', authenticate, authorize(['SUPERADMIN', 'ADMIN_BILLING', 'TECHNICIAN']), odpController.getOdps);
 router.post('/', authenticate, authorize(['SUPERADMIN']), odpController.createOdp);
 router.get('/:id', authenticate, authorize(['SUPERADMIN', 'ADMIN_BILLING']), odpController.getOdpDetails);
 router.delete('/:id', authenticate, authorize(['SUPERADMIN']), odpController.deleteOdp);
