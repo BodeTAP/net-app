@@ -132,7 +132,7 @@ const addToIsolir = async (ipAddress, clientId) => {
     const menu = conn.menu('/ppp/secret');
     const exists = await menu.where('name', clientId).get();
     if (exists.length > 0) {
-      await menu.where('name', clientId).update({ disabled: 'no', profile: 'expired' });
+      await menu.where('name', clientId).update({ disabled: 'no', profile: 'EXPIRED' });
     }
     
     // Kill active connection so they reconnect and get the expired profile/IP
@@ -142,8 +142,8 @@ const addToIsolir = async (ipAddress, clientId) => {
       await activeMenu.where('name', clientId).remove();
     }
     
-    console.log(`[MIKROTIK LIVE] 🔒 ISOLIR (Set Profile: expired) → Client: ${clientId}`);
-    return { success: true, message: `Client ${clientId} berhasil diisolir (Profile: expired).` };
+    console.log(`[MIKROTIK LIVE] 🔒 ISOLIR (Set Profile: EXPIRED) → Client: ${clientId}`);
+    return { success: true, message: `Client ${clientId} berhasil diisolir (Profile: EXPIRED).` };
   });
 };
 
