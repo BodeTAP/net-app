@@ -110,7 +110,7 @@ const removeQueue = async (clientId) => {
     const menu = conn.menu('/ppp/secret');
     const exists = await menu.where('name', clientId).get();
     if (exists.length > 0) {
-      await menu.where({ '.id': exists[0]['.id'] }).remove();
+      await menu.where('name', clientId).remove();
     }
     
     // Also kill active connection
@@ -132,7 +132,7 @@ const addToIsolir = async (ipAddress, clientId) => {
     const menu = conn.menu('/ppp/secret');
     const exists = await menu.where('name', clientId).get();
     if (exists.length > 0) {
-      await menu.where({ '.id': exists[0]['.id'] }).set({ disabled: 'yes' });
+      await menu.where('name', clientId).update({ disabled: 'yes' });
     }
     
     // Kill active connection so they disconnect immediately
@@ -154,7 +154,7 @@ const removeFromIsolir = async (ipAddress, clientId) => {
     const menu = conn.menu('/ppp/secret');
     const exists = await menu.where('name', clientId).get();
     if (exists.length > 0) {
-      await menu.where({ '.id': exists[0]['.id'] }).set({ disabled: 'no' });
+      await menu.where('name', clientId).update({ disabled: 'no' });
     }
     
     console.log(`[MIKROTIK LIVE] 🔓 BUKA ISOLIR (Enable PPPoE) → Client: ${clientId}`);
@@ -180,7 +180,7 @@ const syncAllQueues = async () => {
       try {
         if (existing) {
           // Update jika sudah ada
-          await menu.where({ '.id': existing['.id'] }).set({
+          await menu.where('name', client.id).update({
             password: password,
             profile: client.mikrotik_profile || 'default',
             service: 'pppoe'
