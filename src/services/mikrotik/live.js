@@ -57,11 +57,11 @@ const getTrafficStats = async () => {
     // handles continuous streams differently. For simplicity and matching the mock, we'll return 
     // a formatted value, or we could use `/interface/monitor-traffic` with `once`).
     
-    const monitor = await conn.menu('/interface').where('name', wanIface).execute('monitor-traffic', { once: true });
+    const monitor = await conn.menu('/interface').exec('monitor-traffic', { interface: wanIface, once: 'yes' });
     
     if (monitor && monitor.length > 0) {
-      const rxBps = parseInt(monitor[0]['rx-bits-per-second']) || 0;
-      const txBps = parseInt(monitor[0]['tx-bits-per-second']) || 0;
+      const rxBps = parseInt(monitor[0].rxBitsPerSecond) || 0;
+      const txBps = parseInt(monitor[0].txBitsPerSecond) || 0;
       
       return {
         rxTraffic: `${(rxBps / 1e6).toFixed(2)} Mbps`,
