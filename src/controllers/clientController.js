@@ -138,6 +138,19 @@ const updateClient = async (req, res, next) => {
       return res.status(404).json({ status: 'error', message: 'Pelanggan tidak ditemukan' });
     }
 
+    // Trigger MikroTik Sync if is_active changed
+    if (is_active !== undefined) {
+      try {
+        if (is_active === false) {
+          await mikrotik.addToIsolir('', id); // First arg ipAddress is unused in live.js logic
+        } else {
+          await mikrotik.removeFromIsolir('', id);
+        }
+      } catch (err) {
+        console.error(`[MIKROTIK SYNC ERROR] ${err.message}`);
+      }
+    }
+
     res.status(200).json({ status: 'success', data: result.rows[0] });
   } catch (error) {
     next(error);
@@ -152,6 +165,13 @@ const deleteClient = async (req, res, next) => {
     
     if (result.rows.length === 0) {
       return res.status(404).json({ status: 'error', message: 'Pelanggan tidak ditemukan' });
+    }
+    
+    // Trigger MikroTik Isolir
+    try {
+      await mikrotik.addToIsolir('', id);
+    } catch (err) {
+      console.error(`[MIKROTIK SYNC ERROR] ${err.message}`);
     }
 
     res.status(200).json({ status: 'success', message: 'Pelanggan berhasil dinonaktifkan' });
