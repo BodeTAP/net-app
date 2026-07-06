@@ -221,6 +221,12 @@ const getActiveQueues = async () => {
   });
 };
 
+const getPPPoESecrets = async () => {
+  return execMikrotik(async (conn) => {
+    return await conn.menu('/ppp/secret').get();
+  });
+};
+
 module.exports = {
   getSystemResource,
   getTrafficStats,
@@ -230,4 +236,5 @@ module.exports = {
   removeFromIsolir,
   syncAllQueues,
   getActiveQueues,
+  getPPPoESecrets,
 };

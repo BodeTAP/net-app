@@ -88,6 +88,13 @@ const getActiveQueues = async () => {
   }));
 };
 
+const getPPPoESecrets = async () => {
+  return [
+    { name: 'budi_home', password: '123', profile: '20M', disabled: 'false' },
+    { name: 'alice_kos', password: 'abc', profile: '10M', disabled: 'false' }
+  ];
+};
+
 module.exports = {
   getSystemResource,
   getTrafficStats,
@@ -97,4 +104,5 @@ module.exports = {
   removeFromIsolir,
   syncAllQueues,
   getActiveQueues,
+  getPPPoESecrets,
 };

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Server, Activity, Database, RefreshCw, Cpu, HardDrive } from 'lucide-react';
+import { Server, Activity, Database, RefreshCw, Cpu, HardDrive, CheckCircle, DownloadCloud } from 'lucide-react';
 import Layout from '../components/Layout';
 
 export default function Network() {
@@ -8,6 +8,7 @@ export default function Network() {
   const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
 
   const fetchTelemetry = async () => {
     try {
@@ -46,6 +47,26 @@ export default function Network() {
     }
   };
 
+  const handleImport = async () => {
+    if (!window.confirm('Apakah Anda yakin ingin menarik data PPPoE dari MikroTik? Akun PPPoE yang belum ada di CRM akan ditambahkan.')) {
+      return;
+    }
+    
+    setIsImporting(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.post('/api/v1/network/import', {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert(res.data.message);
+      fetchTelemetry(); // refresh table
+    } catch (err) {
+      alert('Gagal menarik data dari MikroTik');
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   return (
     <Layout>
       <div className="flex justify-between items-center mb-6">
@@ -53,14 +74,24 @@ export default function Network() {
           <h2 className="text-xl font-bold text-text">Orkestrasi Jaringan</h2>
           <p className="text-sm text-muted mt-1">Kelola profil bandwidth dan pantau perangkat keras.</p>
         </div>
-        <button 
-          onClick={handleSync}
-          disabled={isSyncing}
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover font-medium shadow-sm transition-colors disabled:opacity-70"
-        >
-          <RefreshCw size={18} className={isSyncing ? 'animate-spin' : ''} /> 
-          {isSyncing ? 'Sinkronisasi...' : 'Sinkron ke MikroTik'}
-        </button>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={handleImport}
+            disabled={isImporting || isSyncing}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-border text-text rounded-lg hover:bg-gray-50 font-medium shadow-sm transition-colors disabled:opacity-70"
+          >
+            <DownloadCloud size={18} className={isImporting ? 'animate-bounce' : ''} /> 
+            {isImporting ? 'Menarik...' : 'Tarik dari MikroTik'}
+          </button>
+          <button 
+            onClick={handleSync}
+            disabled={isSyncing || isImporting}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover font-medium shadow-sm transition-colors disabled:opacity-70"
+          >
+            <RefreshCw size={18} className={isSyncing ? 'animate-spin' : ''} /> 
+            {isSyncing ? 'Sinkronisasi...' : 'Sinkron ke MikroTik'}
+          </button>
+        </div>
       </div>
 
       {loading && !telemetry ? (
@@ -152,12 +183,4 @@ export default function Network() {
   );
 }
 
-// Inline component for the table status icon since we didn't import it at the top
-function CheckCircle({ size, className }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-      <polyline points="22 4 12 14.01 9 11.01"></polyline>
-    </svg>
-  );
-}
+
