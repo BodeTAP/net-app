@@ -13,7 +13,7 @@
  * Dan tidak perlu peduli apakah sedang dalam mode mock atau live.
  */
 
-require('dotenv').config();
+require('dotenv').config({ override: true });
 const mode = process.env.MIKROTIK_MODE || 'mock';
 
 let service;
