@@ -3,12 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Polyline, Polygon, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import axios from 'axios';
-import { Server, MapPin, Navigation, Activity, X, Map } from 'lucide-react';
+import { Server, MapPin, Navigation, Activity, X, Map, Box, User } from 'lucide-react';
 import TechnicianLayout from '../../components/TechnicianLayout';
 import 'leaflet/dist/leaflet.css';
 
 import { renderToStaticMarkup } from 'react-dom/server';
-import { MapPin, Box, User, Navigation } from 'lucide-react';
 
 // Custom Icons using Lucide and divIcon (Reliable, no external images needed)
 const createDivIcon = (IconComponent, color, bg) => {
