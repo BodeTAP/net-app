@@ -181,6 +181,17 @@ export default function TechnicianDashboard() {
           )}
         </div>
       </div>
+      
+      {/* Camera Modal */}
+      <CameraUpload 
+        isOpen={isCameraOpen} 
+        onClose={() => {
+          setIsCameraOpen(false);
+          setResolvingTicketId(null);
+        }}
+        onUpload={handleResolveWithPhoto}
+        title={`Selesaikan Tiket #${resolvingTicketId}`}
+      />
     </TechnicianLayout>
   );
 }
