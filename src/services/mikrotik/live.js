@@ -175,35 +175,32 @@ const syncAllQueues = async () => {
     
     for (const client of clients) {
       const password = client.whatsapp || '123456';
-      const secret = existingSecrets.find(s => s.name === client.id);
+      const existing = existingSecrets.find(sec => sec.name === client.id);
       
-      if (secret) {
-        // Update if needed
-        if (secret.profile !== client.mikrotik_profile || secret.disabled === 'true') {
-          await menu.where('name', client.id).update({
-            password: password,
-            profile: client.mikrotik_profile || 'default',
-            disabled: 'no'
-          });
-          synced++;
-        }
+      if (existing) {
+        // Update jika sudah ada
+        await menu.where({ '.id': existing['.id'] }).set({
+          password: password,
+          profile: client.mikrotik_profile || 'default',
+          service: 'pppoe'
+        });
       } else {
-        // Create new
+        // Tambah baru jika belum ada
         await menu.add({
           name: client.id,
           password: password,
           profile: client.mikrotik_profile || 'default',
           service: 'pppoe'
         });
-        synced++;
       }
+      synced++;
     }
     
     console.log(`[MIKROTIK LIVE] ✅ Sinkronisasi selesai. ${synced} PPPoE Secret di-update/dibuat dari total ${clients.length} klien aktif.`);
     return {
       success: true,
       total: clients.length,
-      message: `Berhasil menyinkronkan ${synced} akun PPPoE ke MikroTik.`,
+      message: `Berhasil menyinkronkan ${synced} akun PPPoE ke MikroTik secara aman tanpa menghapus data eksisting.`,
     };
   });
 };
