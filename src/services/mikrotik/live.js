@@ -110,7 +110,7 @@ const removeQueue = async (clientId) => {
     const menu = conn.menu('/ppp/secret');
     const exists = await menu.where('name', clientId).get();
     if (exists.length > 0) {
-      await menu.where('name', clientId).remove();
+      await menu.where({ '.id': exists[0]['.id'] }).remove();
     }
     
     // Also kill active connection
@@ -132,7 +132,7 @@ const addToIsolir = async (ipAddress, clientId) => {
     const menu = conn.menu('/ppp/secret');
     const exists = await menu.where('name', clientId).get();
     if (exists.length > 0) {
-      await menu.where('name', clientId).update({ disabled: 'yes' });
+      await menu.where({ '.id': exists[0]['.id'] }).set({ disabled: 'yes' });
     }
     
     // Kill active connection so they disconnect immediately
@@ -154,7 +154,7 @@ const removeFromIsolir = async (ipAddress, clientId) => {
     const menu = conn.menu('/ppp/secret');
     const exists = await menu.where('name', clientId).get();
     if (exists.length > 0) {
-      await menu.where('name', clientId).update({ disabled: 'no' });
+      await menu.where({ '.id': exists[0]['.id'] }).set({ disabled: 'no' });
     }
     
     console.log(`[MIKROTIK LIVE] 🔓 BUKA ISOLIR (Enable PPPoE) → Client: ${clientId}`);
@@ -177,23 +177,27 @@ const syncAllQueues = async () => {
       const password = client.whatsapp || '123456';
       const existing = existingSecrets.find(sec => sec.name === client.id);
       
-      if (existing) {
-        // Update jika sudah ada
-        await menu.where({ '.id': existing['.id'] }).set({
-          password: password,
-          profile: client.mikrotik_profile || 'default',
-          service: 'pppoe'
-        });
-      } else {
-        // Tambah baru jika belum ada
-        await menu.add({
-          name: client.id,
-          password: password,
-          profile: client.mikrotik_profile || 'default',
-          service: 'pppoe'
-        });
+      try {
+        if (existing) {
+          // Update jika sudah ada
+          await menu.where({ '.id': existing['.id'] }).set({
+            password: password,
+            profile: client.mikrotik_profile || 'default',
+            service: 'pppoe'
+          });
+        } else {
+          // Tambah baru jika belum ada
+          await menu.add({
+            name: client.id,
+            password: password,
+            profile: client.mikrotik_profile || 'default',
+            service: 'pppoe'
+          });
+        }
+        synced++;
+      } catch (err) {
+        console.error(`[MIKROTIK LIVE] Gagal sinkron klien ${client.id}:`, err.message);
       }
-      synced++;
     }
     
     console.log(`[MIKROTIK LIVE] ✅ Sinkronisasi selesai. ${synced} PPPoE Secret di-update/dibuat dari total ${clients.length} klien aktif.`);
