@@ -135,6 +135,17 @@ export default function Clients() {
     }
   };
 
+  const handleActivate = async () => {
+    if (!confirm('Apakah Anda yakin ingin mengaktifkan kembali pelanggan ini?')) return;
+    try {
+      await axios.patch(`/api/v1/clients/${selectedClient.id}`, { is_active: true }, { headers });
+      setIsDetailModalOpen(false);
+      fetchClients(currentPage);
+    } catch (err) {
+      alert('Gagal mengaktifkan pelanggan.');
+    }
+  };
+
   const openCreateModal = () => {
     setFormData({ fullname: '', whatsapp: '', address: '', mikrotik_profile: '10M', monthly_fee: '', billing_cycle_date: 1, is_active: true });
     setIsCreateModalOpen(true);
@@ -365,6 +376,11 @@ export default function Clients() {
                   {!isEditMode && clientDetails?.is_active && (
                     <button onClick={handleDeactivate} className="text-red-600 hover:text-red-700 bg-red-50 px-3 py-1.5 rounded-md text-xs font-medium flex items-center gap-1">
                       <PowerOff size={14}/> Nonaktifkan
+                    </button>
+                  )}
+                  {!isEditMode && clientDetails && !clientDetails.is_active && (
+                    <button onClick={handleActivate} className="text-green-600 hover:text-green-700 bg-green-50 px-3 py-1.5 rounded-md text-xs font-medium flex items-center gap-1">
+                      <CheckCircle size={14}/> Aktifkan
                     </button>
                   )}
                   {!isEditMode && (
