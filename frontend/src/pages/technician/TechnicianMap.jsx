@@ -97,7 +97,7 @@ export default function TechnicianMap() {
 
   const handleOdpAction = async (odp) => {
     try {
-      const res = await axios.get(`/api/v1/scan/odp/${odp.qr_token}/status`, { headers });
+      const res = await axios.get(`/api/v1/odps/scan/${odp.qr_token}`, { headers });
       if (res.data.status === 'success') {
         navigate(`/technician/odp/${odp.qr_token}`, { state: { data: res.data.data } });
       }
@@ -186,20 +186,23 @@ export default function TechnicianMap() {
           ))}
 
           {/* ODPs */}
-          {odps.filter(odp => odp.coordinates).map(odp => (
-            <Marker 
-              key={odp.id} 
-              position={[odp.coordinates.y, odp.coordinates.x]}
-              icon={odpIcon}
-              eventHandlers={{
-                click: () => {
-                  setSelectedOdc(null);
-                  setSelectedClient(null);
-                  setSelectedOdp(odp);
-                }
-              }}
-            />
-          ))}
+          {odps.map(odp => {
+            if (!odp.coordinates) return null;
+            return (
+              <Marker 
+                key={`odp-${odp.id}`} 
+                position={[odp.coordinates.y, odp.coordinates.x]}
+                icon={odpIcon}
+                eventHandlers={{
+                  click: () => {
+                    setSelectedOdc(null);
+                    setSelectedClient(null);
+                    setSelectedOdp(odp);
+                  }
+                }}
+              />
+            );
+          })}
 
           {/* Network Topology Lines */}
           {/* ODP -> ODC */}
