@@ -12,8 +12,7 @@ const scanClient = async (req, res, next) => {
     
     const client = clientResult.rows[0];
     
-    // Simulate ping / Rx Power check (In real life, this talks to OLT/MikroTik via Module 4)
-    const rxPower = (Math.random() * (15 - 25) + (-25)).toFixed(2); // Random Rx Power between -15 and -25 dBm
+    // Data diagnostik akan diintegrasikan dengan OLT/MikroTik pada fase selanjutnya
     const status = client.is_active ? 'ONLINE' : 'OFFLINE';
     
     res.status(200).json({
@@ -22,8 +21,8 @@ const scanClient = async (req, res, next) => {
         client,
         diagnostics: {
           status,
-          rxPower: `${rxPower} dBm`,
-          ping: status === 'ONLINE' ? '12ms' : 'Timeout'
+          rxPower: 'N/A',
+          ping: 'N/A'
         }
       }
     });

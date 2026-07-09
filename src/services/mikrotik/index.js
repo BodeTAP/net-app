@@ -1,29 +1,13 @@
 /**
  * MikroTik Service Router
  * 
- * File ini secara otomatis memilih implementasi yang tepat
- * berdasarkan variabel MIKROTIK_MODE di file .env:
- * 
- *   MIKROTIK_MODE=mock  → Simulasi (default, untuk development)
- *   MIKROTIK_MODE=live  → Koneksi nyata ke RouterOS API
- * 
- * Semua modul lain (Controller, Cron Job, dll) cukup memanggil:
- *   const mikrotik = require('../services/mikrotik');
- * 
- * Dan tidak perlu peduli apakah sedang dalam mode mock atau live.
+ * Modul ini sekarang langsung menghubungkan aplikasi ke RouterOS API.
+ * Mode MOCK telah dihapus sesuai permintaan.
  */
 
 require('dotenv').config({ override: true });
-const mode = process.env.MIKROTIK_MODE || 'mock';
+const service = require('./live');
 
-let service;
-
-if (mode === 'live') {
-  service = require('./live');
-  console.log('🟢 [MIKROTIK] Mode: LIVE — Terhubung ke RouterOS API');
-} else {
-  service = require('./mock');
-  console.log('🟡 [MIKROTIK] Mode: MOCK — Menggunakan simulasi lokal');
-}
+console.log('🟢 [MIKROTIK] Terhubung ke RouterOS API (Mode LIVE)');
 
 module.exports = service;
