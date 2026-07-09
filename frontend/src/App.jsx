@@ -7,6 +7,7 @@ import Network from './pages/Network';
 import Tickets from './pages/Tickets';
 import Users from './pages/Users';
 import Odps from './pages/Odps';
+import Packages from './pages/Packages';
 import TechnicianDashboard from './pages/technician/TechnicianDashboard';
 import Scanner from './pages/technician/Scanner';
 import ODPView from './pages/technician/ODPView';
@@ -30,6 +31,7 @@ function App() {
         <Route path="/tickets" element={<Tickets />} />
         <Route path="/users" element={<Users />} />
         <Route path="/odps" element={<Odps />} />
+        <Route path="/packages" element={<Packages />} />
         
         {/* Technician Routes */}
         <Route path="/technician" element={<TechnicianDashboard />} />

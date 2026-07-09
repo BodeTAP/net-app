@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Receipt, Settings, LogOut, Search, Bell, Activity, Server, Menu, Wrench, Shield, MapPin } from 'lucide-react';
+import { LayoutDashboard, Users, Receipt, Settings, LogOut, Search, Bell, Activity, Server, Menu, Wrench, Shield, MapPin, Box } from 'lucide-react';
 
 export default function Layout({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -22,6 +22,7 @@ export default function Layout({ children }) {
     { name: 'Tiket', path: '/tickets', icon: Wrench, roles: ['SUPERADMIN', 'ADMIN_BILLING'] },
     { name: 'Pemetaan ODP', path: '/odps', icon: MapPin, roles: ['SUPERADMIN', 'ADMIN_BILLING'] },
     { name: 'Jaringan', path: '/network', icon: Server, roles: ['SUPERADMIN'] },
+    { name: 'Paket Internet', path: '/packages', icon: Box, roles: ['SUPERADMIN'] },
     { name: 'Karyawan', path: '/users', icon: Shield, roles: ['SUPERADMIN'] },
   ];
 

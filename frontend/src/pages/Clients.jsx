@@ -41,22 +41,11 @@ export default function Clients() {
   const token = localStorage.getItem('token');
   const headers = { Authorization: `Bearer ${token}` };
 
-  const getSuggestedPrice = (profileName) => {
-    if (!profileName) return '';
-    const p = profileName.toLowerCase();
-    if (p.includes('10m')) return 150000;
-    if (p.includes('20m')) return 200000;
-    if (p.includes('30m')) return 250000;
-    if (p.includes('50m')) return 350000;
-    if (p.includes('100m')) return 600000;
-    return '';
-  };
-
   const fetchProfiles = async () => {
     try {
-      const res = await axios.get('/api/v1/network/profiles', { headers });
-      const profiles = res.data.data.filter(p => p.name !== 'default-encryption');
-      setMikrotikProfiles(profiles);
+      const res = await axios.get('/api/v1/packages', { headers });
+      const packages = res.data.data.filter(p => p.is_active);
+      setMikrotikProfiles(packages);
     } catch (err) {
       console.error('Gagal mengambil profil mikrotik', err);
     }
@@ -126,7 +115,7 @@ export default function Clients() {
     try {
       await axios.post('/api/v1/clients', formData, { headers });
       setIsCreateModalOpen(false);
-      setFormData({ fullname: '', whatsapp: '', address: '', mikrotik_profile: mikrotikProfiles[0]?.name || 'default', monthly_fee: '', billing_cycle_date: 1, is_active: true });
+      setFormData({ fullname: '', whatsapp: '', address: '', mikrotik_profile: mikrotikProfiles[0]?.name || '', monthly_fee: mikrotikProfiles[0]?.monthly_fee || '', billing_cycle_date: 1, is_active: true });
       fetchClients(currentPage);
     } catch (err) {
       alert('Gagal menambah pelanggan. Anda mungkin tidak memiliki izin.');
@@ -359,11 +348,15 @@ export default function Clients() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-text mb-1">Profil MikroTik</label>
-                      <select value={formData.mikrotik_profile} onChange={e => setFormData({...formData, mikrotik_profile: e.target.value})} className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-white">
-                        <option value="10M">10 Mbps</option>
-                        <option value="20M">20 Mbps</option>
-                        <option value="50M">50 Mbps</option>
-                        <option value="100M">100 Mbps</option>
+                      <select value={formData.mikrotik_profile} onChange={e => {
+                        const val = e.target.value;
+                        const pkg = mikrotikProfiles.find(p => p.name === val);
+                        setFormData({...formData, mikrotik_profile: val, monthly_fee: pkg ? pkg.monthly_fee : formData.monthly_fee});
+                      }} className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-white">
+                        <option value="">Pilih Paket...</option>
+                        {mikrotikProfiles.map(p => (
+                          <option key={p.id} value={p.name}>{p.name} - Rp {p.monthly_fee.toLocaleString('id-ID')}</option>
+                        ))}
                       </select>
                     </div>
                     <div>
@@ -448,8 +441,8 @@ export default function Clients() {
                               <label className="block text-sm font-medium text-text mb-1">Profil MikroTik</label>
                               <select value={formData.mikrotik_profile} onChange={e => {
                                 const val = e.target.value;
-                                const price = getSuggestedPrice(val);
-                                setFormData({...formData, mikrotik_profile: val, monthly_fee: price ? price : formData.monthly_fee});
+                                const pkg = mikrotikProfiles.find(p => p.name === val);
+                                setFormData({...formData, mikrotik_profile: val, monthly_fee: pkg ? pkg.monthly_fee : formData.monthly_fee});
                               }} className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-white">
                                 {mikrotikProfiles.length === 0 ? (
                                   <option value="">Memuat...</option>

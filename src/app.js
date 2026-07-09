@@ -30,6 +30,7 @@ const odcRoutes = require('./routes/odcRoutes');
 const coverageRoutes = require('./routes/coverageRoutes');
 const clientAppRoutes = require('./routes/clientAppRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
+const packageRoutes = require('./routes/packageRoutes');
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
@@ -44,6 +45,7 @@ app.use('/api/v1/odcs', odcRoutes);
 app.use('/api/v1/coverages', coverageRoutes);
 app.use('/api/v1/client-app', clientAppRoutes);
 app.use('/api/v1/payment', paymentRoutes);
+app.use('/api/v1/packages', packageRoutes);
 
 // Centralized error handling middleware
 const errorHandler = require('./middlewares/errorHandler');
