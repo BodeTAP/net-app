@@ -471,23 +471,40 @@ export default function Odps() {
                       <h4 className="font-bold text-xs mb-2 text-gray-700">Tampilan Peta</h4>
                       <label className="flex items-center gap-2 text-xs mb-1 cursor-pointer">
                         <input type="checkbox" checked={layers.odps} onChange={() => setLayers(l => ({...l, odps: !l.odps}))} />
-                        <span className="text-gray-800">📍 ODP (Tiang)</span>
+                        <div className="flex items-center gap-1.5 text-gray-800">
+                          <div className="w-5 h-5 rounded-full flex items-center justify-center text-white shadow-sm border border-white" style={{ backgroundColor: '#3b82f6' }}><MapPin size={10} /></div>
+                          <span>ODP (Tiang)</span>
+                        </div>
                       </label>
                       <label className="flex items-center gap-2 text-xs mb-1 cursor-pointer">
                         <input type="checkbox" checked={layers.odcs} onChange={() => setLayers(l => ({...l, odcs: !l.odcs}))} />
-                        <span className="text-blue-800">🖥️ ODC (Pusat)</span>
+                        <div className="flex items-center gap-1.5 text-gray-800">
+                          <div className="w-5 h-5 rounded-full flex items-center justify-center text-white shadow-sm border border-white" style={{ backgroundColor: '#f97316' }}><Box size={10} /></div>
+                          <span>ODC (Pusat)</span>
+                        </div>
                       </label>
                       <label className="flex items-center gap-2 text-xs mb-1 cursor-pointer">
                         <input type="checkbox" checked={layers.clients} onChange={() => setLayers(l => ({...l, clients: !l.clients}))} />
-                        <span className="text-green-800">🏠 Pelanggan</span>
+                        <div className="flex items-center gap-1.5 text-gray-800">
+                          <div className="w-5 h-5 rounded-full flex items-center justify-center text-white shadow-sm border border-white" style={{ backgroundColor: '#22c55e' }}><User size={10} /></div>
+                          <span>Pelanggan</span>
+                        </div>
                       </label>
                       <label className="flex items-center gap-2 text-xs mb-1 cursor-pointer">
                         <input type="checkbox" checked={layers.coverages} onChange={() => setLayers(l => ({...l, coverages: !l.coverages}))} />
-                        <span className="text-purple-800">🗺️ Coverage Area</span>
+                        <div className="flex items-center gap-1.5 text-gray-800">
+                          <div className="w-5 h-5 flex items-center justify-center border-2 rounded-sm" style={{ backgroundColor: 'rgba(51, 136, 255, 0.2)', borderColor: '#3388ff' }}><MapIcon size={10} color="#3388ff" /></div>
+                          <span>Coverage Area</span>
+                        </div>
                       </label>
                       <label className="flex items-center gap-2 text-xs cursor-pointer">
                         <input type="checkbox" checked={layers.topology} onChange={() => setLayers(l => ({...l, topology: !l.topology}))} />
-                        <span className="text-orange-800">🔗 Garis Topologi Kabel</span>
+                        <div className="flex items-center gap-1.5 text-gray-800">
+                          <div className="w-5 h-5 flex items-center justify-center">
+                            <div className="w-full h-0 border-t-2 border-dashed border-blue-600"></div>
+                          </div>
+                          <span>Garis Topologi Kabel</span>
+                        </div>
                       </label>
                     </div>
                   </div>
