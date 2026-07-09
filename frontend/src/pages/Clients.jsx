@@ -162,6 +162,11 @@ export default function Clients() {
     }
   };
 
+  const getSuggestedPrice = (profileName) => {
+    const pkg = mikrotikProfiles.find(p => p.name === profileName);
+    return pkg ? pkg.monthly_fee : '';
+  };
+
   const openCreateModal = () => {
     const today = Math.min(new Date().getDate(), 28);
     const defaultProfile = mikrotikProfiles.length > 0 ? mikrotikProfiles[0].name : 'default';
