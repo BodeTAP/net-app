@@ -31,3 +31,32 @@
     padding: 2cm; /* Memberikan jarak sedikit agar hasil print tidak terlalu mepet ke ujung kertas */
   }
 }
+
+/* html5-qrcode UI overrides */
+#reader a {
+  color: #60A5FA !important;
+  text-decoration: none !important;
+}
+#reader a:hover {
+  text-decoration: underline !important;
+}
+#reader span {
+  color: #E5E7EB !important;
+}
+#reader button {
+  background-color: var(--color-primary) !important;
+  color: white !important;
+  border: none !important;
+  padding: 8px 16px !important;
+  border-radius: 6px !important;
+  margin-top: 10px !important;
+  cursor: pointer;
+}
+#reader select {
+  background-color: #374151 !important;
+  color: white !important;
+  border: 1px solid #4B5563 !important;
+  padding: 4px 8px !important;
+  border-radius: 4px !important;
+  margin-bottom: 10px !important;
+}
