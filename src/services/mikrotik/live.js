@@ -6,6 +6,7 @@ const config = {
   user: process.env.MIKROTIK_USER || 'admin',
   password: process.env.MIKROTIK_PASS || '',
   port: parseInt(process.env.MIKROTIK_PORT) || 8728,
+  timeout: 10,
 };
 
 const wanIface = process.env.MIKROTIK_WAN_IFACE || 'ether1';
@@ -139,7 +140,9 @@ const addToIsolir = async (ipAddress, clientId) => {
     const activeMenu = conn.menu('/ppp/active');
     const active = await activeMenu.where('name', clientId).get();
     if (active.length > 0) {
-      await activeMenu.where('name', clientId).remove();
+      for (const sess of active) {
+        await activeMenu.where('.id', sess['.id']).remove();
+      }
     }
     
     console.log(`[MIKROTIK LIVE] 🔒 ISOLIR (Set Profile: EXPIRED) → Client: ${clientId}`);
@@ -163,7 +166,9 @@ const removeFromIsolir = async (ipAddress, clientId) => {
     const activeMenu = conn.menu('/ppp/active');
     const active = await activeMenu.where('name', clientId).get();
     if (active.length > 0) {
-      await activeMenu.where('name', clientId).remove();
+      for (const sess of active) {
+        await activeMenu.where('.id', sess['.id']).remove();
+      }
     }
 
     console.log(`[MIKROTIK LIVE] 🔓 BUKA ISOLIR (Restore Profile: ${originalProfile}) → Client: ${clientId}`);
@@ -265,20 +270,28 @@ const createProfile = async (data) => {
 
 const updateProfile = async (name, data) => {
   return execMikrotik(async (conn) => {
+    const menu = conn.menu('/ppp/profile');
+    const profiles = await menu.where('name', name).get();
+    if (profiles.length === 0) return { success: false, message: 'Profile not found' };
+    
     const updateData = {};
     if (data.name) updateData.name = data.name;
     if (data.localAddress !== undefined) updateData['local-address'] = data.localAddress;
     if (data.remoteAddress !== undefined) updateData['remote-address'] = data.remoteAddress;
     if (data.rateLimit !== undefined) updateData['rate-limit'] = data.rateLimit;
     
-    await conn.menu('/ppp/profile').where('name', name).update(updateData);
+    await menu.where('.id', profiles[0]['.id']).update(updateData);
     return { success: true };
   });
 };
 
 const deleteProfile = async (name) => {
   return execMikrotik(async (conn) => {
-    await conn.menu('/ppp/profile').where('name', name).remove();
+    const menu = conn.menu('/ppp/profile');
+    const profiles = await menu.where('name', name).get();
+    if (profiles.length > 0) {
+      await menu.where('.id', profiles[0]['.id']).remove();
+    }
     return { success: true };
   });
 };
