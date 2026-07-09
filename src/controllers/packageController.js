@@ -53,12 +53,18 @@ const updatePackage = async (req, res, next) => {
     }
     const oldName = oldRes.rows[0].name;
 
-    // 1. Update Database
+    // 1. Update Database (Package)
     const result = await query(
       `UPDATE internet_packages 
        SET name = $1, monthly_fee = $2, rate_limit = $3, is_active = $4
        WHERE id = $5 RETURNING *`,
       [name, monthly_fee, rate_limit, is_active, id]
+    );
+
+    // 2. Cascade update to all clients using this profile
+    await query(
+      `UPDATE clients SET monthly_fee = $1, mikrotik_profile = $2 WHERE mikrotik_profile = $3`,
+      [monthly_fee, name, oldName]
     );
 
     // 2. Update Mikrotik
