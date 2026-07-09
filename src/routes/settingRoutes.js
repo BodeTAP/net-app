@@ -1,10 +1,10 @@
 const express = require('express');
 const { getSettings, updateSetting } = require('../controllers/settingController');
-const authMiddleware = require('../middlewares/authMiddleware');
+const { authenticate, authorize } = require('../middlewares/authMiddleware');
 
 const router = express.Router();
 
-router.get('/', authMiddleware, getSettings);
-router.put('/:key', authMiddleware, updateSetting);
+router.get('/', authenticate, authorize(['SUPERADMIN']), getSettings);
+router.put('/:key', authenticate, authorize(['SUPERADMIN']), updateSetting);
 
 module.exports = router;
