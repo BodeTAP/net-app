@@ -101,6 +101,13 @@ const createClient = async (req, res, next) => {
       id, qr_token, fullname, whatsapp, address, mikrotik_profile, monthly_fee, billing_cycle_date || 1, password_hash
     ]);
 
+    // Trigger MikroTik Sync (Create PPPoE Secret)
+    try {
+      await mikrotik.createQueue(id, mikrotik_profile, '', whatsapp);
+    } catch (err) {
+      console.error(`[MIKROTIK SYNC ERROR] ${err.message}`);
+    }
+
     res.status(201).json({
       status: 'success',
       data: result.rows[0]
@@ -145,10 +152,19 @@ const updateClient = async (req, res, next) => {
     if (is_active !== undefined) {
       try {
         if (is_active === false) {
-          await mikrotik.addToIsolir('', id); // First arg ipAddress is unused in live.js logic
+          await mikrotik.removeQueue(id); // Delete from mikrotik if deactivated
         } else {
-          await mikrotik.removeFromIsolir('', id);
+          const clientData = result.rows[0];
+          await mikrotik.createQueue(id, clientData.mikrotik_profile, '', clientData.whatsapp); // Recreate if activated
         }
+      } catch (err) {
+        console.error(`[MIKROTIK SYNC ERROR] ${err.message}`);
+      }
+    } else if (mikrotik_profile || whatsapp) {
+      // Trigger sync if profile or whatsapp changed
+      try {
+        const clientData = result.rows[0];
+        await mikrotik.createQueue(id, clientData.mikrotik_profile, '', clientData.whatsapp);
       } catch (err) {
         console.error(`[MIKROTIK SYNC ERROR] ${err.message}`);
       }
@@ -170,9 +186,9 @@ const deleteClient = async (req, res, next) => {
       return res.status(404).json({ status: 'error', message: 'Pelanggan tidak ditemukan' });
     }
     
-    // Trigger MikroTik Isolir
+    // Trigger MikroTik Hard Delete
     try {
-      await mikrotik.addToIsolir('', id);
+      await mikrotik.removeQueue(id);
     } catch (err) {
       console.error(`[MIKROTIK SYNC ERROR] ${err.message}`);
     }
