@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const packageController = require('../controllers/packageController');
-const { protect, restrictTo } = require('../middlewares/authMiddleware');
+const { authenticate, authorize } = require('../middlewares/authMiddleware');
 
-router.use(protect);
+router.use(authenticate);
 
 router.get('/', packageController.getPackages);
 
-router.use(restrictTo('ADMIN'));
+router.use(authorize(['SUPERADMIN']));
 
 router.post('/sync', packageController.syncFromMikrotik);
 router.post('/', packageController.createPackage);
