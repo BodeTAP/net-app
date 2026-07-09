@@ -353,6 +353,16 @@ export default function Odps() {
     o.id.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const filteredOdcs = odcs.filter(o => 
+    o.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    o.id.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredClients = clients.filter(c => 
+    c.fullname.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    c.id.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   const handleViewInMap = (odp) => {
     setViewMode('MAP');
     setFlyTarget({ ...odp, _ts: Date.now() });
