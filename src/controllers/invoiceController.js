@@ -96,29 +96,33 @@ const generateInvoices = async (req, res, next) => {
     let generatedCount = 0;
     
     for (const client of clients.rows) {
-      const existingInvoice = await query(
-        `SELECT id FROM invoices WHERE client_id = $1 AND id LIKE $2`,
-        [client.id, `INV-${currentMonth}-%`]
-      );
-      
-      if (existingInvoice.rows.length === 0) {
-        const invId = `INV-${currentMonth}-${Math.floor(1000 + Math.random() * 9000)}`;
-        const date = new Date();
-        const dueDate = new Date(date.getFullYear(), date.getMonth(), client.billing_cycle_date || 5);
-        
-        await query(
-          `INSERT INTO invoices (id, client_id, amount, due_date, status) 
-           VALUES ($1, $2, $3, $4, 'UNPAID')`,
-           [invId, client.id, client.monthly_fee, dueDate]
+      try {
+        const existingInvoice = await query(
+          `SELECT id FROM invoices WHERE client_id = $1 AND id LIKE $2`,
+          [client.id, `INV-${currentMonth}-%`]
         );
         
-        generatedCount++;
-        
-        console.log(`[WA GATEWAY] Pesan terkirim ke ${client.whatsapp}: Halo ${client.fullname}, tagihan ${invId} sebesar Rp${client.monthly_fee} jatuh tempo ${dueDate.toLocaleDateString('id-ID')}.`);
+        if (existingInvoice.rows.length === 0) {
+          const invId = `INV-${currentMonth}-${Math.floor(1000 + Math.random() * 9000)}`;
+          const date = new Date();
+          const dueDate = new Date(date.getFullYear(), date.getMonth(), client.billing_cycle_date || 5);
+          
+          await query(
+            `INSERT INTO invoices (id, client_id, amount, due_date, status) 
+             VALUES ($1, $2, $3, $4, 'UNPAID')`,
+             [invId, client.id, client.monthly_fee, dueDate]
+          );
+          
+          generatedCount++;
+          
+          console.log(`[WA GATEWAY] Pesan terkirim ke ${client.whatsapp}: Halo ${client.fullname}, tagihan ${invId} sebesar Rp${client.monthly_fee} jatuh tempo ${dueDate.toLocaleDateString('id-ID')}.`);
 
-        if (new Date() > dueDate) {
-          await mikrotik.addToIsolir(client.ip_address || '0.0.0.0', client.id);
+          if (new Date() > dueDate) {
+            await mikrotik.addToIsolir(client.ip_address || '0.0.0.0', client.id);
+          }
         }
+      } catch (err) {
+        console.error(`[CRON ERROR] Gagal memproses tagihan untuk klien ${client.id}:`, err.message);
       }
     }
     

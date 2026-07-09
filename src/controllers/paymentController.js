@@ -97,16 +97,21 @@ const handleCallback = async (req, res, next) => {
     const { reference, merchant_ref, status, total_amount } = req.body;
 
     if (status === 'PAID') {
-      // Find the invoice with this merchant_ref
-      const invoiceRes = await query(`SELECT id FROM invoices WHERE payment_reference = $1`, [merchant_ref]);
+      // Find the invoice by parsing invoice_id from merchant_ref (INV-YYYYMM-XXXX-TIMESTAMP)
+      const invoiceId = merchant_ref.split('-').slice(0, 3).join('-');
+      
+      const invoiceRes = await query(`SELECT id, amount FROM invoices WHERE id = $1`, [invoiceId]);
       const invoice = invoiceRes.rows[0];
 
-      if (invoice) {
+      // Verifikasi bahwa amount yang dibayarkan sesuai dengan tagihan
+      if (invoice && Number(total_amount) >= Number(invoice.amount)) {
         await query(
           `UPDATE invoices SET status = 'PAID', paid_at = CURRENT_TIMESTAMP WHERE id = $1`,
           [invoice.id]
         );
         console.log(`[TRIPAY] Invoice ${invoice.id} paid successfully via ${merchant_ref}`);
+      } else if (invoice) {
+        console.error(`[TRIPAY] Payment amount mismatch for ${invoice.id}. Expected: ${invoice.amount}, Got: ${total_amount}`);
       }
     }
 

@@ -2,6 +2,13 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
+const mimeExtMap = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/gif': '.gif',
+  'image/webp': '.webp'
+};
+
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const dest = path.join(__dirname, '../../public/uploads/tickets');
@@ -12,15 +19,16 @@ const storage = multer.diskStorage({
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'ticket-' + uniqueSuffix + path.extname(file.originalname));
+    const ext = mimeExtMap[file.mimetype] || '.bin';
+    cb(null, 'ticket-' + uniqueSuffix + ext);
   }
 });
 
 const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image/')) {
+  if (mimeExtMap[file.mimetype]) {
     cb(null, true);
   } else {
-    cb(new Error('Hanya diperbolehkan mengunggah berkas gambar (JPG/PNG)'), false);
+    cb(new Error('Hanya diperbolehkan mengunggah berkas gambar (JPG/PNG/GIF/WEBP)'), false);
   }
 };
 

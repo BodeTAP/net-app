@@ -8,17 +8,20 @@ const getClients = async (req, res, next) => {
     const offset = (page - 1) * limit;
 
     let whereClause = 'WHERE 1=1';
+    let whereClauseJoin = 'WHERE 1=1';
     const params = [];
     let paramIndex = 1;
 
     if (status && status !== 'ALL') {
       whereClause += ` AND is_active = $${paramIndex}`;
+      whereClauseJoin += ` AND c.is_active = $${paramIndex}`;
       params.push(status === 'ACTIVE');
       paramIndex++;
     }
 
     if (search) {
       whereClause += ` AND (fullname ILIKE $${paramIndex} OR whatsapp ILIKE $${paramIndex} OR id ILIKE $${paramIndex})`;
+      whereClauseJoin += ` AND (c.fullname ILIKE $${paramIndex} OR c.whatsapp ILIKE $${paramIndex} OR c.id ILIKE $${paramIndex})`;
       params.push(`%${search}%`);
       paramIndex++;
     }
@@ -32,7 +35,7 @@ const getClients = async (req, res, next) => {
       SELECT c.id, c.qr_token, c.fullname, c.whatsapp, c.address, c.coordinates, c.mikrotik_profile, c.monthly_fee, c.billing_cycle_date, c.is_active, c.created_at, p.odp_id
       FROM clients c
       LEFT JOIN port_assignments p ON c.id = p.client_id
-      ${whereClause.replace(/(\w+)/g, (match) => ['is_active', 'fullname', 'whatsapp', 'id'].includes(match) ? `c.${match}` : match)}
+      ${whereClauseJoin}
       ORDER BY c.created_at DESC
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `, [...params, parseInt(limit), parseInt(offset)]);

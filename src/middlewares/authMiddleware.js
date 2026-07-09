@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
+const { query } = require('../config/db');
 
-const authenticate = (req, res, next) => {
+const authenticate = async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -11,6 +12,15 @@ const authenticate = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
+    
+    // Check if user is still active in database
+    const table = decoded.role === 'CLIENT' ? 'clients' : 'users';
+    const result = await query(`SELECT is_active FROM ${table} WHERE id = $1`, [decoded.id]);
+    
+    if (result.rows.length === 0 || !result.rows[0].is_active) {
+      return res.status(401).json({ status: 'error', message: 'Unauthorized: Account is inactive or deleted' });
+    }
+
     req.user = decoded;
     next();
   } catch (error) {
