@@ -152,10 +152,9 @@ const updateClient = async (req, res, next) => {
     if (is_active !== undefined) {
       try {
         if (is_active === false) {
-          await mikrotik.removeQueue(id); // Delete from mikrotik if deactivated
+          await mikrotik.addToIsolir('', id); // Use isolir so they get redirected to blocked page
         } else {
-          const clientData = result.rows[0];
-          await mikrotik.createQueue(id, clientData.mikrotik_profile, '', clientData.whatsapp); // Recreate if activated
+          await mikrotik.removeFromIsolir('', id); // Revert to original profile
         }
       } catch (err) {
         console.error(`[MIKROTIK SYNC ERROR] ${err.message}`);
@@ -186,9 +185,9 @@ const deleteClient = async (req, res, next) => {
       return res.status(404).json({ status: 'error', message: 'Pelanggan tidak ditemukan' });
     }
     
-    // Trigger MikroTik Hard Delete
+    // Trigger MikroTik Isolir (Soft Delete in Mikrotik)
     try {
-      await mikrotik.removeQueue(id);
+      await mikrotik.addToIsolir('', id);
     } catch (err) {
       console.error(`[MIKROTIK SYNC ERROR] ${err.message}`);
     }
