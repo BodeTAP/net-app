@@ -135,6 +135,14 @@ export default function Odps() {
   const [searchClient, setSearchClient] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [listTab, searchQuery]);
+
   // Form State
   const [formData, setFormData] = useState({ name: '', total_ports: 8 });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -829,8 +837,8 @@ export default function Odps() {
             )}
           </div>
         ) : (
-          <div className="flex-1 flex flex-col">
-            <div className="px-4 pt-4 border-b border-border bg-gray-50">
+          <div className="flex-1 flex flex-col min-h-0">
+            <div className="px-4 pt-4 border-b border-border bg-gray-50 flex-none">
               <div className="flex flex-col md:flex-row gap-4 mb-4">
                 {/* Tabs */}
                 <div className="flex bg-gray-200/50 p-1 rounded-lg w-full md:w-auto overflow-x-auto">
@@ -909,7 +917,7 @@ export default function Odps() {
                         filteredOdps.length === 0 ? (
                           <tr><td colSpan="4" className="px-6 py-8 text-center text-muted">Tidak ada data ODP ditemukan.</td></tr>
                         ) : (
-                          filteredOdps.map(odp => {
+                          filteredOdps.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(odp => {
                             const used = parseInt(odp.used_ports) || 0;
                             const total = odp.total_ports;
                             const percent = (used / total) * 100;
@@ -979,7 +987,7 @@ export default function Odps() {
                         filteredOdcs.length === 0 ? (
                           <tr><td colSpan="4" className="px-6 py-8 text-center text-muted">Tidak ada data ODC ditemukan.</td></tr>
                         ) : (
-                          filteredOdcs.map(odc => (
+                          filteredOdcs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(odc => (
                             <tr key={odc.id} className="hover:bg-gray-50/80 transition-colors">
                               <td className="px-6 py-4">
                                 <div className="flex items-center gap-3">
@@ -1033,7 +1041,7 @@ export default function Odps() {
                         filteredClients.length === 0 ? (
                           <tr><td colSpan="4" className="px-6 py-8 text-center text-muted">Tidak ada data Pelanggan ditemukan.</td></tr>
                         ) : (
-                          filteredClients.map(client => (
+                          filteredClients.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(client => (
                             <tr key={client.id} className="hover:bg-gray-50/80 transition-colors">
                               <td className="px-6 py-4">
                                 <div>
@@ -1098,6 +1106,43 @@ export default function Odps() {
                 </tbody>
               </table>
             </div>
+            
+            {/* Pagination Controls */}
+            {!loading && (
+              <div className="p-4 border-t border-border bg-white flex items-center justify-between flex-none">
+                <span className="text-sm text-muted">
+                  Menampilkan {(() => {
+                    const activeList = listTab === 'ODP' ? filteredOdps : listTab === 'ODC' ? filteredOdcs : filteredClients;
+                    if (activeList.length === 0) return '0 data';
+                    const start = (currentPage - 1) * itemsPerPage + 1;
+                    const end = Math.min(currentPage * itemsPerPage, activeList.length);
+                    return `${start}-${end} dari ${activeList.length} data`;
+                  })()}
+                </span>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1.5 border border-border rounded-lg text-sm font-medium text-text bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronLeft size={16} className="inline-block mr-1" /> Prev
+                  </button>
+                  <button 
+                    onClick={() => {
+                      const activeList = listTab === 'ODP' ? filteredOdps : listTab === 'ODC' ? filteredOdcs : filteredClients;
+                      setCurrentPage(p => Math.min(Math.ceil(activeList.length / itemsPerPage), p + 1));
+                    }}
+                    disabled={(() => {
+                      const activeList = listTab === 'ODP' ? filteredOdps : listTab === 'ODC' ? filteredOdcs : filteredClients;
+                      return currentPage >= Math.ceil(activeList.length / itemsPerPage) || activeList.length === 0;
+                    })()}
+                    className="px-3 py-1.5 border border-border rounded-lg text-sm font-medium text-text bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Next <ChevronRight size={16} className="inline-block ml-1" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
