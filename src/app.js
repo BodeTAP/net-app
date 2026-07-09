@@ -1,13 +1,20 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const path = require('path');
+const cors = require('cors');
 
 dotenv.config();
 
 const app = express();
 
+// Enable CORS for all routes (untuk mendukung akses API dari aplikasi Mobile)
+app.use(cors());
+
 // Serve static files (uploads)
 app.use('/public', express.static(path.join(__dirname, '../public')));
+
+// Serve the static React frontend
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
 app.use(express.json());
 
@@ -48,6 +55,11 @@ app.use('/api/v1/client-app', clientAppRoutes);
 app.use('/api/v1/payment', paymentRoutes);
 app.use('/api/v1/packages', packageRoutes);
 app.use('/api/v1/settings', settingRoutes);
+
+// Catch-all route for React Router (Harus berada di bawah semua rute API)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+});
 
 // Centralized error handling middleware
 const errorHandler = require('./middlewares/errorHandler');
