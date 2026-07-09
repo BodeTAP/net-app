@@ -6,6 +6,7 @@ import Layout from '../components/Layout';
 export default function Settings() {
   const [bankAccounts, setBankAccounts] = useState([]);
   const [adminWa, setAdminWa] = useState('');
+  const [telemetryInterval, setTelemetryInterval] = useState('5000');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -27,6 +28,9 @@ export default function Settings() {
         if (data.admin_whatsapp) {
           setAdminWa(data.admin_whatsapp);
         }
+        if (data.telemetry_interval) {
+          setTelemetryInterval(data.telemetry_interval);
+        }
       }
     } catch (err) {
       console.error(err);
@@ -43,6 +47,9 @@ export default function Settings() {
         headers: { Authorization: `Bearer ${token}` }
       });
       await axios.put('/api/v1/settings/admin_whatsapp', { value: adminWa }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      await axios.put('/api/v1/settings/telemetry_interval', { value: telemetryInterval }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       alert('Pengaturan berhasil disimpan!');
@@ -102,6 +109,28 @@ export default function Settings() {
               className="w-full md:w-1/2 p-2.5 border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary/20 outline-none"
             />
             <p className="text-xs text-muted mt-2">Nomor ini akan digunakan sebagai tujuan konfirmasi pembayaran manual dan tiket gangguan.</p>
+          </div>
+        </div>
+
+        {/* Telemetry Setting */}
+        <div className="bg-surface border border-border rounded-xl p-6 shadow-sm">
+          <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <SettingsIcon size={18} className="text-muted" /> Interval Pembaruan Telemetri
+          </h3>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Kecepatan Pembaruan Dasbor</label>
+            <select
+              value={telemetryInterval}
+              onChange={(e) => setTelemetryInterval(e.target.value)}
+              className="w-full md:w-1/2 p-2.5 border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary/20 outline-none bg-white"
+            >
+              <option value="1000">1 Detik (Sangat Real-time, Beban Tinggi)</option>
+              <option value="2000">2 Detik (Cepat & Seimbang)</option>
+              <option value="3000">3 Detik (Normal)</option>
+              <option value="5000">5 Detik (Bawaan)</option>
+              <option value="10000">10 Detik (Lambat, Hemat Resource)</option>
+            </select>
+            <p className="text-xs text-muted mt-2">Mengatur seberapa sering data trafik RouterOS pada Dasbor diperbarui. Semakin cepat, semakin berat beban pada Router MikroTik Anda.</p>
           </div>
         </div>
 

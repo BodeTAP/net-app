@@ -8,6 +8,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [telemetry, setTelemetry] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [telemetryInterval, setTelemetryInterval] = useState(5000);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -33,26 +34,48 @@ export default function Dashboard() {
       }
     };
 
+    const fetchSettings = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await axios.get('/api/v1/settings', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.data.data.telemetry_interval) {
+          setTelemetryInterval(parseInt(res.data.data.telemetry_interval, 10));
+        }
+      } catch (err) {
+        console.error('Failed to fetch settings', err);
+      }
+    };
+
+    const loadAll = async () => {
+      await Promise.all([fetchStats(), fetchSettings()]);
+    };
+
+    loadAll();
+  }, [navigate]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
     const fetchTelemetry = async () => {
-      const token = localStorage.getItem('token');
       try {
         const res = await axios.get('/api/v1/network/telemetry', {
           headers: { Authorization: `Bearer ${token}` }
         });
-        setTelemetry(res.data.data.telemetry);
+        if (res.data.status === 'success' && res.data.data) {
+          setTelemetry(res.data.data.telemetry);
+        }
       } catch (err) {
         console.error(err);
       }
     };
 
-    const loadAll = async () => {
-      await Promise.all([fetchStats(), fetchTelemetry()]);
-    };
-
-    loadAll();
-    const interval = setInterval(fetchTelemetry, 5000);
-    return () => clearInterval(interval);
-  }, [navigate]);
+    fetchTelemetry();
+    const intervalId = setInterval(fetchTelemetry, telemetryInterval);
+    return () => clearInterval(intervalId);
+  }, [telemetryInterval]);
 
   if (loading) {
     return (
