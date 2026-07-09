@@ -98,6 +98,7 @@ export default function Odps() {
   
   // View mode
   const [viewMode, setViewMode] = useState('MAP'); // MAP or LIST
+  const [listTab, setListTab] = useState('ODP'); // ODP, ODC, CLIENT
   
   // Layer Toggles
   const [layers, setLayers] = useState({
@@ -819,75 +820,270 @@ export default function Odps() {
           </div>
         ) : (
           <div className="flex-1 flex flex-col">
-            <div className="p-4 border-b border-border bg-gray-50">
-              <div className="relative max-w-md">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-                <input
-                  type="text"
-                  placeholder="Cari ID atau Nama ODP..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white"
-                />
+            <div className="px-4 pt-4 border-b border-border bg-gray-50">
+              <div className="flex flex-col md:flex-row gap-4 mb-4">
+                {/* Tabs */}
+                <div className="flex bg-gray-200/50 p-1 rounded-lg w-full md:w-auto overflow-x-auto">
+                  <button 
+                    onClick={() => setListTab('ODP')} 
+                    className={`flex-1 md:flex-none px-4 py-1.5 text-sm font-medium rounded-md transition-all ${listTab === 'ODP' ? 'bg-white shadow-sm text-primary' : 'text-gray-600 hover:text-gray-900'}`}
+                  >
+                    Tiang (ODP)
+                  </button>
+                  <button 
+                    onClick={() => setListTab('ODC')} 
+                    className={`flex-1 md:flex-none px-4 py-1.5 text-sm font-medium rounded-md transition-all ${listTab === 'ODC' ? 'bg-white shadow-sm text-orange-600' : 'text-gray-600 hover:text-gray-900'}`}
+                  >
+                    Server (ODC)
+                  </button>
+                  <button 
+                    onClick={() => setListTab('CLIENT')} 
+                    className={`flex-1 md:flex-none px-4 py-1.5 text-sm font-medium rounded-md transition-all ${listTab === 'CLIENT' ? 'bg-white shadow-sm text-green-600' : 'text-gray-600 hover:text-gray-900'}`}
+                  >
+                    Pelanggan
+                  </button>
+                </div>
+                {/* Search Bar */}
+                <div className="relative flex-1 max-w-md ml-auto">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                  <input
+                    type="text"
+                    placeholder={
+                      listTab === 'ODP' ? "Cari ID atau Nama ODP..." :
+                      listTab === 'ODC' ? "Cari ID atau Nama ODC..." :
+                      "Cari ID atau Nama Pelanggan..."
+                    }
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-4 py-1.5 border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white"
+                  />
+                </div>
               </div>
             </div>
+            
             <div className="flex-1 overflow-auto">
               <table className="w-full text-left text-sm">
-                <thead className="bg-gray-50 text-muted border-b border-border sticky top-0">
-                  <tr>
-                    <th className="px-6 py-4 font-medium">Nama & ID ODP</th>
-                    <th className="px-6 py-4 font-medium">Kapasitas Port</th>
-                    <th className="px-6 py-4 font-medium">Koordinat</th>
-                    <th className="px-6 py-4 font-medium">Aksi</th>
-                  </tr>
+                <thead className="bg-gray-50 text-muted border-b border-border sticky top-0 z-10 shadow-sm">
+                  {listTab === 'ODP' && (
+                    <tr>
+                      <th className="px-6 py-4 font-medium">Nama & ID ODP</th>
+                      <th className="px-6 py-4 font-medium w-1/3">Kapasitas Port</th>
+                      <th className="px-6 py-4 font-medium">Koordinat & Peta</th>
+                      <th className="px-6 py-4 font-medium text-right">Aksi</th>
+                    </tr>
+                  )}
+                  {listTab === 'ODC' && (
+                    <tr>
+                      <th className="px-6 py-4 font-medium">Nama & ID ODC</th>
+                      <th className="px-6 py-4 font-medium">Total Port</th>
+                      <th className="px-6 py-4 font-medium">Koordinat & Peta</th>
+                      <th className="px-6 py-4 font-medium text-right">Aksi</th>
+                    </tr>
+                  )}
+                  {listTab === 'CLIENT' && (
+                    <tr>
+                      <th className="px-6 py-4 font-medium">Nama & ID Pelanggan</th>
+                      <th className="px-6 py-4 font-medium">Status & Topologi</th>
+                      <th className="px-6 py-4 font-medium">Koordinat & Peta</th>
+                      <th className="px-6 py-4 font-medium text-right">Aksi</th>
+                    </tr>
+                  )}
                 </thead>
                 <tbody className="divide-y divide-border">
                   {loading ? (
-                    <tr><td colSpan="4" className="px-6 py-8 text-center text-muted">Memuat...</td></tr>
-                  ) : filteredOdps.length === 0 ? (
-                    <tr><td colSpan="4" className="px-6 py-8 text-center text-muted">Tidak ada data ODP ditemukan.</td></tr>
+                    <tr><td colSpan="4" className="px-6 py-8 text-center text-muted">Memuat data...</td></tr>
                   ) : (
-                    filteredOdps.map(odp => {
-                      const used = parseInt(odp.used_ports) || 0;
-                      const total = odp.total_ports;
-                      const percent = (used / total) * 100;
-                      
-                      return (
-                        <tr key={odp.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-6 py-4">
-                            <p className="font-bold text-text">{odp.name}</p>
-                            <p className="font-mono text-xs text-muted mt-1">{odp.id}</p>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
-                              <div className="flex-1 max-w-[120px] h-2 bg-gray-200 rounded-full overflow-hidden">
-                                <div className={`h-full ${percent >= 100 ? 'bg-red-500' : percent >= 80 ? 'bg-amber-500' : 'bg-green-500'}`} style={{ width: `${percent}%` }}></div>
-                              </div>
-                              <span className="text-xs font-bold text-muted">{used}/{total} Terisi</span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 font-mono text-xs text-muted">
-                            {odp.coordinates.y.toFixed(5)}, {odp.coordinates.x.toFixed(5)}
-                          </td>
-                          <td className="p-4 text-right">
-                          <button 
-                            onClick={() => handleViewInMap(odp)}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors mr-2"
-                            title="Lihat di Peta"
-                          >
-                            <MapIcon size={18} />
-                          </button>
-                          <button 
-                            onClick={() => setQrModalOdp(odp)}
-                            className="p-1.5 text-slate-600 hover:bg-slate-100 rounded-md transition-colors mr-2"
-                            title="Cetak Stiker QR"
-                          >
-                            <QrCode size={18} />
-                          </button>
-                        </td>
-                        </tr>
-                      );
-                    })
+                    <>
+                      {/* --- ODP TAB --- */}
+                      {listTab === 'ODP' && (
+                        filteredOdps.length === 0 ? (
+                          <tr><td colSpan="4" className="px-6 py-8 text-center text-muted">Tidak ada data ODP ditemukan.</td></tr>
+                        ) : (
+                          filteredOdps.map(odp => {
+                            const used = parseInt(odp.used_ports) || 0;
+                            const total = odp.total_ports;
+                            const percent = (used / total) * 100;
+                            const statusColor = percent >= 100 ? 'bg-red-100 text-red-700' : percent >= 80 ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700';
+                            const statusText = percent >= 100 ? 'PENUH' : percent >= 80 ? 'HAMPIR PENUH' : 'TERSEDIA';
+
+                            return (
+                              <tr key={odp.id} className="hover:bg-gray-50/80 transition-colors">
+                                <td className="px-6 py-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0">
+                                      <MapPin size={16} />
+                                    </div>
+                                    <div>
+                                      <p className="font-bold text-text">{odp.name}</p>
+                                      <p className="font-mono text-xs text-muted mt-0.5">{odp.id}</p>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <div className="flex items-center gap-3 mb-1.5">
+                                    <div className="flex-1 max-w-[150px] h-2.5 bg-gray-200 rounded-full overflow-hidden">
+                                      <div className={`h-full ${percent >= 100 ? 'bg-red-500' : percent >= 80 ? 'bg-amber-500' : 'bg-green-500'}`} style={{ width: `${percent}%` }}></div>
+                                    </div>
+                                    <span className="text-xs font-bold text-muted">{used}/{total}</span>
+                                  </div>
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColor}`}>{statusText}</span>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-mono text-xs text-muted bg-gray-100 px-2 py-1 rounded">
+                                      {odp.coordinates.y.toFixed(5)}, {odp.coordinates.x.toFixed(5)}
+                                    </span>
+                                    <a 
+                                      href={`https://www.google.com/maps?q=${odp.coordinates.y},${odp.coordinates.x}`} 
+                                      target="_blank" 
+                                      rel="noreferrer"
+                                      className="text-blue-500 hover:text-blue-700 p-1 bg-blue-50 hover:bg-blue-100 rounded transition-colors"
+                                      title="Buka di Google Maps"
+                                    >
+                                      <Locate size={14} />
+                                    </a>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 text-right space-x-2">
+                                  <button 
+                                    onClick={() => handleViewInMap(odp)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 text-blue-600 hover:bg-blue-50 hover:border-blue-200 rounded-lg text-xs font-medium transition-colors shadow-sm"
+                                  >
+                                    <MapIcon size={14} /> Lihat Peta
+                                  </button>
+                                  <button 
+                                    onClick={() => setQrModalOdp(odp)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 rounded-lg text-xs font-medium transition-colors shadow-sm"
+                                  >
+                                    <QrCode size={14} /> QR
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )
+                      )}
+
+                      {/* --- ODC TAB --- */}
+                      {listTab === 'ODC' && (
+                        filteredOdcs.length === 0 ? (
+                          <tr><td colSpan="4" className="px-6 py-8 text-center text-muted">Tidak ada data ODC ditemukan.</td></tr>
+                        ) : (
+                          filteredOdcs.map(odc => (
+                            <tr key={odc.id} className="hover:bg-gray-50/80 transition-colors">
+                              <td className="px-6 py-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 flex-shrink-0">
+                                    <Server size={16} />
+                                  </div>
+                                  <div>
+                                    <p className="font-bold text-text">{odc.name}</p>
+                                    <p className="font-mono text-xs text-muted mt-0.5">{odc.id}</p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <span className="font-bold text-orange-600">{odc.total_ports} Port</span>
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono text-xs text-muted bg-gray-100 px-2 py-1 rounded">
+                                    {odc.coordinates.y.toFixed(5)}, {odc.coordinates.x.toFixed(5)}
+                                  </span>
+                                  <a 
+                                    href={`https://www.google.com/maps?q=${odc.coordinates.y},${odc.coordinates.x}`} 
+                                    target="_blank" 
+                                    rel="noreferrer"
+                                    className="text-orange-500 hover:text-orange-700 p-1 bg-orange-50 hover:bg-orange-100 rounded transition-colors"
+                                    title="Buka di Google Maps"
+                                  >
+                                    <Locate size={14} />
+                                  </a>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <button 
+                                  onClick={() => {
+                                    setViewMode('MAP');
+                                    setFlyTarget({ coordinates: odc.coordinates, _ts: Date.now() });
+                                    setSelectedOdcDetails(odc);
+                                  }}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 text-orange-600 hover:bg-orange-50 hover:border-orange-200 rounded-lg text-xs font-medium transition-colors shadow-sm"
+                                >
+                                  <MapIcon size={14} /> Lihat Peta
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )
+                      )}
+
+                      {/* --- CLIENT TAB --- */}
+                      {listTab === 'CLIENT' && (
+                        filteredClients.length === 0 ? (
+                          <tr><td colSpan="4" className="px-6 py-8 text-center text-muted">Tidak ada data Pelanggan ditemukan.</td></tr>
+                        ) : (
+                          filteredClients.map(client => (
+                            <tr key={client.id} className="hover:bg-gray-50/80 transition-colors">
+                              <td className="px-6 py-4">
+                                <div>
+                                  <p className="font-bold text-text">{client.fullname}</p>
+                                  <p className="font-mono text-xs text-muted mt-0.5">{client.id}</p>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="flex flex-col gap-1.5 items-start">
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${client.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                    {client.is_active ? 'AKTIF' : 'NONAKTIF'}
+                                  </span>
+                                  {client.odp_id ? (
+                                    <span className="text-xs text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded truncate max-w-[150px]" title={odps.find(o => o.id === client.odp_id)?.name || client.odp_id}>
+                                      🔗 {odps.find(o => o.id === client.odp_id)?.name || client.odp_id}
+                                    </span>
+                                  ) : (
+                                    <span className="text-xs text-gray-500 italic">Belum ditarik kabel</span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                {client.coordinates ? (
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-mono text-xs text-muted bg-gray-100 px-2 py-1 rounded">
+                                      {client.coordinates.y.toFixed(5)}, {client.coordinates.x.toFixed(5)}
+                                    </span>
+                                    <a 
+                                      href={`https://www.google.com/maps?q=${client.coordinates.y},${client.coordinates.x}`} 
+                                      target="_blank" 
+                                      rel="noreferrer"
+                                      className="text-green-500 hover:text-green-700 p-1 bg-green-50 hover:bg-green-100 rounded transition-colors"
+                                      title="Buka di Google Maps"
+                                    >
+                                      <Locate size={14} />
+                                    </a>
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-gray-400 italic">Koordinat tidak tersedia</span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                {client.coordinates && (
+                                  <button 
+                                    onClick={() => {
+                                      setViewMode('MAP');
+                                      setFlyTarget({ coordinates: client.coordinates, _ts: Date.now() });
+                                      setSelectedClientDetails(client);
+                                    }}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 text-green-600 hover:bg-green-50 hover:border-green-200 rounded-lg text-xs font-medium transition-colors shadow-sm"
+                                  >
+                                    <MapIcon size={14} /> Lihat Peta
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))
+                        )
+                      )}
+                    </>
                   )}
                 </tbody>
               </table>
