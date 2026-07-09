@@ -16,7 +16,6 @@ export default function Network() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setTelemetry(res.data.data.telemetry);
-      setActiveClientsCount(res.data.data.profiles);
     } catch (err) {
       console.error(err);
     }
@@ -144,7 +143,8 @@ export default function Network() {
               </div>
             </div>
           </div>
-
+        </>
+      )}
 
     </Layout>
   );
