@@ -506,7 +506,7 @@ export default function Odps() {
                   {addingEntity === 'COVERAGE' && drawingCoveragePoints.length > 0 && (
                     <Polygon 
                       positions={drawingCoveragePoints}
-                      pathOptions={{ color: '#3388ff', fillColor: '#3388ff', fillOpacity: 0.2, dashArray: '5, 5' }} 
+                      pathOptions={{ color: '#3388ff', fillColor: '#3388ff', fillOpacity: 0.2, dashArray: '5, 5', interactive: false }} 
                     />
                   )}
                   
@@ -515,7 +515,7 @@ export default function Odps() {
                     <Polygon 
                       key={cov.id} 
                       positions={cov.polygon_data} 
-                      pathOptions={{ color: cov.color || '#3388ff', fillColor: cov.color || '#3388ff', fillOpacity: 0.2 }}
+                      pathOptions={{ color: cov.color || '#3388ff', fillColor: cov.color || '#3388ff', fillOpacity: 0.2, interactive: !addingEntity }}
                     >
                       <Popup>
                         <div className="font-bold">{cov.name}</div>
@@ -602,7 +602,7 @@ export default function Odps() {
                               [odp.coordinates.y, odp.coordinates.x],
                               [odc.coordinates.y, odc.coordinates.x]
                             ]}
-                            pathOptions={{ color: '#2563eb', weight: 3, dashArray: '10, 10' }}
+                            pathOptions={{ color: '#2563eb', weight: 3, dashArray: '10, 10', interactive: !addingEntity }}
                           >
                             <Popup>
                               <div className="text-sm">Kabel Feeder:<br/><b>{odp.name}</b> ➔ <b>{odc.name}</b></div>
@@ -617,12 +617,12 @@ export default function Odps() {
                         if (!odp) return null;
                         return (
                           <Polyline 
-                            key={`link-${client.id}-${odp.id}`}
+                            key={`link-client-${client.id}`}
                             positions={[
                               [client.coordinates.y, client.coordinates.x],
                               [odp.coordinates.y, odp.coordinates.x]
                             ]}
-                            pathOptions={{ color: '#16a34a', weight: 2 }}
+                            pathOptions={{ color: '#16a34a', weight: 2, interactive: !addingEntity }}
                           >
                             <Popup>
                               <div className="text-sm">Kabel Drop Core:<br/><b>{client.fullname}</b> ➔ <b>{odp.name}</b></div>
