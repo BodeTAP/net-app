@@ -12,6 +12,7 @@ export default function InvoiceDetail() {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
+  const [companySettings, setCompanySettings] = useState({ bank_accounts: [], admin_whatsapp: '' });
 
   useEffect(() => {
     const token = localStorage.getItem('clientToken');
@@ -35,6 +36,17 @@ export default function InvoiceDetail() {
              headers: { Authorization: `Bearer ${token}` }
           });
           setChannels(chanRes.data.data);
+
+          // Fetch Settings
+          const setRes = await axios.get('/api/v1/client-app/settings', {
+             headers: { Authorization: `Bearer ${token}` }
+          });
+          if (setRes.data.status === 'success') {
+            setCompanySettings({
+              bank_accounts: setRes.data.data.bank_accounts || [],
+              admin_whatsapp: setRes.data.data.admin_whatsapp || '6281234567890'
+            });
+          }
         }
       } catch (err) {
         setError('Gagal memuat detail tagihan');
@@ -159,20 +171,15 @@ export default function InvoiceDetail() {
                   <div className="mt-2 p-4 bg-gray-50 border border-gray-200 rounded-xl ml-4 animate-in slide-in-from-top-2">
                     <p className="text-xs text-gray-700 mb-3 font-medium">Silakan transfer sesuai nominal tagihan ke salah satu rekening berikut:</p>
                     <div className="space-y-2">
-                      <div className="flex justify-between items-center bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
-                        <div>
-                          <p className="font-bold text-sm text-blue-800">BCA</p>
-                          <p className="text-[10px] text-gray-500">a/n NetOps Internet</p>
+                      {companySettings.bank_accounts.map((acc, idx) => (
+                        <div key={idx} className="flex justify-between items-center bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
+                          <div>
+                            <p className="font-bold text-sm text-blue-800">{acc.bank}</p>
+                            <p className="text-[10px] text-gray-500">a/n {acc.name}</p>
+                          </div>
+                          <p className="font-mono font-bold text-sm">{acc.number}</p>
                         </div>
-                        <p className="font-mono font-bold text-sm">8273 1928 33</p>
-                      </div>
-                      <div className="flex justify-between items-center bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
-                        <div>
-                          <p className="font-bold text-sm text-orange-600">BNI</p>
-                          <p className="text-[10px] text-gray-500">a/n NetOps Internet</p>
-                        </div>
-                        <p className="font-mono font-bold text-sm">0192 8374 65</p>
-                      </div>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -210,7 +217,7 @@ export default function InvoiceDetail() {
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 max-w-md mx-auto shadow-[0_-10px_20px_rgba(0,0,0,0.05)]">
           {selectedChannel === 'MANUAL' ? (
             <button 
-              onClick={() => window.open('https://wa.me/6281234567890?text=Halo%20Admin,%20saya%20sudah%20transfer%20untuk%20tagihan%20'+invoice.id, '_blank')}
+              onClick={() => window.open(`https://wa.me/${companySettings.admin_whatsapp}?text=Halo%20Admin,%20saya%20sudah%20transfer%20untuk%20tagihan%20${invoice.id}`, '_blank')}
               className="w-full bg-green-600 text-white font-bold py-3.5 rounded-xl hover:bg-green-700 shadow-lg shadow-green-600/30 flex justify-center items-center gap-2"
             >
               Konfirmasi ke WhatsApp

@@ -10,5 +10,6 @@ router.get('/dashboard', authenticate, authorize(['CLIENT']), clientAppControlle
 router.get('/invoices', authenticate, authorize(['CLIENT']), clientAppController.getMyInvoices);
 router.get('/tickets', authenticate, authorize(['CLIENT']), clientAppController.getMyTickets);
 router.post('/tickets', authenticate, authorize(['CLIENT']), clientAppController.createTicket);
+router.get('/settings', authenticate, authorize(['CLIENT']), clientAppController.getSettings);
 
 module.exports = router;

@@ -122,4 +122,17 @@ const createTicket = async (req, res, next) => {
   }
 };
 
-module.exports = { login, getMyDashboard, getMyInvoices, getMyTickets, createTicket };
+const getSettings = async (req, res, next) => {
+  try {
+    const result = await query('SELECT key, value FROM company_settings');
+    const settings = {};
+    result.rows.forEach(row => {
+      settings[row.key] = row.value;
+    });
+    res.status(200).json({ status: 'success', data: settings });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { login, getMyDashboard, getMyInvoices, getMyTickets, createTicket, getSettings };

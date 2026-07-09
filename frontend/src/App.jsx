@@ -17,6 +17,7 @@ import ClientDashboard from './pages/client/ClientDashboard';
 import ClientInvoices from './pages/client/ClientInvoices';
 import InvoiceDetail from './pages/client/InvoiceDetail';
 import ClientTickets from './pages/client/ClientTickets';
+import Settings from './pages/Settings';
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
         <Route path="/users" element={<Users />} />
         <Route path="/odps" element={<Odps />} />
         <Route path="/packages" element={<Packages />} />
+        <Route path="/settings" element={<Settings />} />
         
         {/* Technician Routes */}
         <Route path="/technician" element={<TechnicianDashboard />} />

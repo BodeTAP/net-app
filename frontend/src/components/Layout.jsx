@@ -23,6 +23,7 @@ export default function Layout({ children }) {
     { name: 'Pemetaan ODP', path: '/odps', icon: MapPin, roles: ['SUPERADMIN', 'ADMIN_BILLING'] },
     { name: 'Paket Internet', path: '/packages', icon: Box, roles: ['SUPERADMIN'] },
     { name: 'Karyawan', path: '/users', icon: Shield, roles: ['SUPERADMIN'] },
+    { name: 'Pengaturan', path: '/settings', icon: Settings, roles: ['SUPERADMIN'] },
   ];
 
   return (

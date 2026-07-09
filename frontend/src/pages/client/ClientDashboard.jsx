@@ -80,6 +80,14 @@ export default function ClientDashboard() {
             </div>
             <h3 className="text-3xl font-extrabold mb-1">{profile.mikrotik_profile}</h3>
             <p className="text-white/80 text-sm font-medium">Rp {Number(profile.monthly_fee).toLocaleString('id-ID')} / bulan</p>
+            {!isActive && currentInvoice && (
+              <button 
+                onClick={() => navigate(`/client/invoice/${currentInvoice.id}`)}
+                className="mt-4 bg-white text-red-600 font-bold px-4 py-2 rounded-lg text-sm shadow-sm hover:bg-gray-50 transition-colors active:scale-95"
+              >
+                Bayar Sekarang & Buka Isolir
+              </button>
+            )}
           </div>
         </div>
 

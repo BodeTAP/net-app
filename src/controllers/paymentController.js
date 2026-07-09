@@ -30,6 +30,13 @@ const requestPayment = async (req, res, next) => {
       return res.status(400).json({ status: 'error', message: 'Tagihan ini sudah lunas' });
     }
 
+    if (method === 'MANUAL') {
+      return res.status(200).json({
+        status: 'manual',
+        message: 'Silakan lakukan pembayaran manual sesuai instruksi.'
+      });
+    }
+
     // Tripay Request Payload
     // The amount is invoice.amount + fee (for simplicity, we assume fee is charged to customer or we absorb it).
     // Let's just use invoice.amount. The admin fee is added by Tripay internally if we set flat/percent in their dashboard, or we calculate it here. 
