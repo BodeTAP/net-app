@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Play, CheckCircle, Search, Filter, ChevronLeft, ChevronRight, Trash2, Download, X, AlertTriangle, DollarSign, Clock } from 'lucide-react';
+import { Play, CheckCircle, Search, Filter, ChevronLeft, ChevronRight, Trash2, Download, X, AlertTriangle, DollarSign, Clock, MessageCircle } from 'lucide-react';
 import Layout from '../components/Layout';
 
 export default function Invoices() {
@@ -289,12 +289,24 @@ export default function Invoices() {
                     <td className="px-6 py-4 print:hidden">
                       <div className="flex gap-1">
                         {inv.status !== 'PAID' && (
-                          <button
-                            onClick={() => handlePayment(inv.id)}
-                            className="flex items-center gap-1 px-2.5 py-1.5 bg-green-50 text-green-700 hover:bg-green-100 rounded-md transition-colors text-xs font-medium border border-green-200"
-                          >
-                            <CheckCircle size={12} /> Bayar
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handlePayment(inv.id)}
+                              className="flex items-center gap-1 px-2.5 py-1.5 bg-green-50 text-green-700 hover:bg-green-100 rounded-md transition-colors text-xs font-medium border border-green-200"
+                              title="Bayar Manual"
+                            >
+                              <CheckCircle size={12} />
+                            </button>
+                            <a
+                              href={`https://wa.me/${inv.whatsapp}?text=Halo%20Bapak/Ibu%20${encodeURIComponent(inv.fullname)},%20berikut%20adalah%20pengingat%20tagihan%20internet%20Anda%20(ID:%20${inv.id})%20sebesar%20Rp%20${parseFloat(inv.amount).toLocaleString('id-ID')}%20dengan%20jatuh%20tempo%20tanggal%20${new Date(inv.due_date).toLocaleDateString('id-ID')}.%20Mohon%20segera%20melakukan%20pembayaran.`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-md transition-colors text-xs font-medium border border-blue-200"
+                              title="Kirim Pengingat WA"
+                            >
+                              <MessageCircle size={12} />
+                            </a>
+                          </>
                         )}
                         <button
                           onClick={() => setSelectedInvoice(inv)}

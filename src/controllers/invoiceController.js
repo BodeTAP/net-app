@@ -118,7 +118,12 @@ const generateInvoices = async (req, res, next) => {
           console.log(`[WA GATEWAY] Pesan terkirim ke ${client.whatsapp}: Halo ${client.fullname}, tagihan ${invId} sebesar Rp${client.monthly_fee} jatuh tempo ${dueDate.toLocaleDateString('id-ID')}.`);
 
           if (new Date() > dueDate) {
-            await mikrotik.addToIsolir(client.ip_address || '0.0.0.0', client.id);
+            // Check if client has auto_isolir enabled
+            if (client.auto_isolir) {
+              await mikrotik.addToIsolir(client.ip_address || '0.0.0.0', client.id);
+            } else {
+              console.log(`[ISOLIR SKIPPED] Klien ${client.id} memiliki auto_isolir = false`);
+            }
           }
         }
       } catch (err) {

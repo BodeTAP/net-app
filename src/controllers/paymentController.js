@@ -1,5 +1,6 @@
 const { query } = require('../config/db');
 const tripayService = require('../services/tripayService');
+const mikrotik = require('../services/mikrotik');
 
 const requestPayment = async (req, res, next) => {
   try {
@@ -110,6 +111,20 @@ const handleCallback = async (req, res, next) => {
           [invoice.id]
         );
         console.log(`[TRIPAY] Invoice ${invoice.id} paid successfully via ${merchant_ref}`);
+        
+        // Remove from Isolir in Mikrotik
+        try {
+          const clientRes = await query(`SELECT client_id FROM invoices WHERE id = $1`, [invoice.id]);
+          if (clientRes.rows.length > 0) {
+            const client = await query(`SELECT id, ip_address FROM clients WHERE id = $1`, [clientRes.rows[0].client_id]);
+            if (client.rows.length > 0) {
+              await mikrotik.removeFromIsolir(client.rows[0].ip_address || '0.0.0.0', client.rows[0].id);
+              console.log(`[TRIPAY] Buka isolir otomatis untuk klien ${client.rows[0].id}`);
+            }
+          }
+        } catch (err) {
+          console.error(`[TRIPAY ERROR] Gagal membuka isolir:`, err.message);
+        }
       } else if (invoice) {
         console.error(`[TRIPAY] Payment amount mismatch for ${invoice.id}. Expected: ${invoice.amount}, Got: ${total_amount}`);
       }

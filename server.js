@@ -1,7 +1,6 @@
 const app = require('./src/app');
 const { pool } = require('./src/config/db');
-const cron = require('node-cron');
-const { generateInvoices } = require('./src/controllers/invoiceController');
+const { initCron } = require('./src/cron/billingCron');
 
 const port = process.env.PORT || 3000;
 
@@ -12,12 +11,8 @@ const startServer = async () => {
     console.log('Connected to PostgreSQL successfully');
     client.release();
 
-    // Setup Cron Job: Run at midnight on the 1st of every month to generate invoices
-    cron.schedule('0 0 1 * *', () => {
-      console.log('[CRON] Running monthly invoice generation...');
-      // We mock req and res for the controller
-      generateInvoices(null, { status: () => ({ json: (data) => console.log(data) }) });
-    });
+    // Setup Cron Job
+    initCron();
 
     app.listen(port, () => {
       console.log(`Server is running on port ${port}`);
