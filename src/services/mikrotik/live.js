@@ -119,7 +119,7 @@ const removeQueue = async (clientId) => {
     const active = await activeMenu.where('name', clientId).get();
     if (active.length > 0) {
       for (const sess of active) {
-        await activeMenu.where('.id', sess['.id']).remove();
+        await activeMenu.remove(sess.id);
       }
     }
     
@@ -141,7 +141,7 @@ const addToIsolir = async (ipAddress, clientId) => {
     const active = await activeMenu.where('name', clientId).get();
     if (active.length > 0) {
       for (const sess of active) {
-        await activeMenu.where('.id', sess['.id']).remove();
+        await activeMenu.remove(sess.id);
       }
     }
     
@@ -167,7 +167,7 @@ const removeFromIsolir = async (ipAddress, clientId) => {
     const active = await activeMenu.where('name', clientId).get();
     if (active.length > 0) {
       for (const sess of active) {
-        await activeMenu.where('.id', sess['.id']).remove();
+        await activeMenu.remove(sess.id);
       }
     }
 
@@ -246,7 +246,7 @@ const getAllProfiles = async () => {
   return execMikrotik(async (conn) => {
     const profiles = await conn.menu('/ppp/profile').get();
     return profiles.map(p => ({
-      id: p['.id'],
+      id: p.id,
       name: p.name,
       localAddress: p.localAddress || '',
       remoteAddress: p.remoteAddress || '',
@@ -280,7 +280,7 @@ const updateProfile = async (name, data) => {
     if (data.remoteAddress !== undefined) updateData['remote-address'] = data.remoteAddress;
     if (data.rateLimit !== undefined) updateData['rate-limit'] = data.rateLimit;
     
-    await menu.where('.id', profiles[0]['.id']).update(updateData);
+    await menu.where('id', profiles[0].id).update(updateData);
     return { success: true };
   });
 };
@@ -290,7 +290,7 @@ const deleteProfile = async (name) => {
     const menu = conn.menu('/ppp/profile');
     const profiles = await menu.where('name', name).get();
     if (profiles.length > 0) {
-      await menu.where('.id', profiles[0]['.id']).remove();
+      await menu.remove(profiles[0].id);
     }
     return { success: true };
   });
