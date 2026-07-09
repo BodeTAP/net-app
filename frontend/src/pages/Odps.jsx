@@ -500,6 +500,11 @@ export default function Odps() {
                     .leaflet-container:active {
                       cursor: ${addingEntity ? 'crosshair !important' : 'grabbing'};
                     }
+                    ${addingEntity ? `
+                    .leaflet-interactive {
+                      pointer-events: none !important;
+                    }
+                    ` : ''}
                   `}</style>
                   
                   {/* Drawing Coverage Line/Polygon */}
