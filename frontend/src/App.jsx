@@ -3,7 +3,6 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Clients from './pages/Clients';
 import Invoices from './pages/Invoices';
-import Network from './pages/Network';
 import Tickets from './pages/Tickets';
 import Users from './pages/Users';
 import Odps from './pages/Odps';
@@ -27,7 +26,6 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/clients" element={<Clients />} />
         <Route path="/invoices" element={<Invoices />} />
-        <Route path="/network" element={<Network />} />
         <Route path="/tickets" element={<Tickets />} />
         <Route path="/users" element={<Users />} />
         <Route path="/odps" element={<Odps />} />

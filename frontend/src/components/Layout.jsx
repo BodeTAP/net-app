@@ -21,7 +21,6 @@ export default function Layout({ children }) {
     { name: 'Tagihan', path: '/invoices', icon: Receipt, roles: ['SUPERADMIN', 'ADMIN_BILLING'] },
     { name: 'Tiket', path: '/tickets', icon: Wrench, roles: ['SUPERADMIN', 'ADMIN_BILLING'] },
     { name: 'Pemetaan ODP', path: '/odps', icon: MapPin, roles: ['SUPERADMIN', 'ADMIN_BILLING'] },
-    { name: 'Jaringan', path: '/network', icon: Server, roles: ['SUPERADMIN'] },
     { name: 'Paket Internet', path: '/packages', icon: Box, roles: ['SUPERADMIN'] },
     { name: 'Karyawan', path: '/users', icon: Shield, roles: ['SUPERADMIN'] },
   ];
