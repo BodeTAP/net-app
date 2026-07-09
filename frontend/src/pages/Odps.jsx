@@ -479,14 +479,14 @@ export default function Odps() {
                       <label className="flex items-center gap-2 text-xs mb-1 cursor-pointer">
                         <input type="checkbox" checked={layers.odcs} onChange={() => setLayers(l => ({...l, odcs: !l.odcs}))} />
                         <div className="flex items-center gap-1.5 text-gray-800">
-                          <div className="w-5 h-5 rounded-full flex items-center justify-center text-white shadow-sm border border-white" style={{ backgroundColor: '#f97316' }}><Box size={10} /></div>
+                          <div className="w-5 h-5 rounded-full flex items-center justify-center text-white shadow-sm border border-white" style={{ backgroundColor: '#f97316' }}><Server size={10} /></div>
                           <span>ODC (Pusat)</span>
                         </div>
                       </label>
                       <label className="flex items-center gap-2 text-xs mb-1 cursor-pointer">
                         <input type="checkbox" checked={layers.clients} onChange={() => setLayers(l => ({...l, clients: !l.clients}))} />
                         <div className="flex items-center gap-1.5 text-gray-800">
-                          <div className="w-5 h-5 rounded-full flex items-center justify-center text-white shadow-sm border border-white" style={{ backgroundColor: '#22c55e' }}><User size={10} /></div>
+                          <div className="w-5 h-5 rounded-full flex items-center justify-center text-white shadow-sm border border-white" style={{ backgroundColor: '#22c55e' }}><Locate size={10} /></div>
                           <span>Pelanggan</span>
                         </div>
                       </label>
