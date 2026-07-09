@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Plus, QrCode, Printer, Search, Filter, ChevronLeft, ChevronRight, X, Edit, Trash2, PowerOff, CheckCircle, AlertTriangle, FileText, Wrench } from 'lucide-react';
+import { Plus, QrCode, Printer, Search, Filter, ChevronLeft, ChevronRight, X, Edit, Trash2, PowerOff, CheckCircle, AlertTriangle, FileText, Wrench, MessageCircle } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import Layout from '../components/Layout';
 
@@ -31,14 +31,36 @@ export default function Clients() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
 
-  // Form states
+  // Form & Profile states
+  const [mikrotikProfiles, setMikrotikProfiles] = useState([]);
   const [formData, setFormData] = useState({
-    fullname: '', whatsapp: '', address: '', mikrotik_profile: '10M', monthly_fee: '', billing_cycle_date: 1, is_active: true
+    fullname: '', whatsapp: '', address: '', mikrotik_profile: '', monthly_fee: '', billing_cycle_date: 1, is_active: true
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const token = localStorage.getItem('token');
   const headers = { Authorization: `Bearer ${token}` };
+
+  const getSuggestedPrice = (profileName) => {
+    if (!profileName) return '';
+    const p = profileName.toLowerCase();
+    if (p.includes('10m')) return 150000;
+    if (p.includes('20m')) return 200000;
+    if (p.includes('30m')) return 250000;
+    if (p.includes('50m')) return 350000;
+    if (p.includes('100m')) return 600000;
+    return '';
+  };
+
+  const fetchProfiles = async () => {
+    try {
+      const res = await axios.get('/api/v1/network/profiles', { headers });
+      const profiles = res.data.data.filter(p => p.name !== 'default-encryption');
+      setMikrotikProfiles(profiles);
+    } catch (err) {
+      console.error('Gagal mengambil profil mikrotik', err);
+    }
+  };
 
   const fetchClients = async (page = 1) => {
     if (!token) return navigate('/login');
@@ -59,6 +81,10 @@ export default function Clients() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchProfiles();
+  }, []);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -100,7 +126,7 @@ export default function Clients() {
     try {
       await axios.post('/api/v1/clients', formData, { headers });
       setIsCreateModalOpen(false);
-      setFormData({ fullname: '', whatsapp: '', address: '', mikrotik_profile: '10M', monthly_fee: '', billing_cycle_date: 1, is_active: true });
+      setFormData({ fullname: '', whatsapp: '', address: '', mikrotik_profile: mikrotikProfiles[0]?.name || 'default', monthly_fee: '', billing_cycle_date: 1, is_active: true });
       fetchClients(currentPage);
     } catch (err) {
       alert('Gagal menambah pelanggan. Anda mungkin tidak memiliki izin.');
@@ -147,7 +173,9 @@ export default function Clients() {
   };
 
   const openCreateModal = () => {
-    setFormData({ fullname: '', whatsapp: '', address: '', mikrotik_profile: '10M', monthly_fee: '', billing_cycle_date: 1, is_active: true });
+    const today = Math.min(new Date().getDate(), 28);
+    const defaultProfile = mikrotikProfiles.length > 0 ? mikrotikProfiles[0].name : 'default';
+    setFormData({ fullname: '', whatsapp: '', address: '', mikrotik_profile: defaultProfile, monthly_fee: getSuggestedPrice(defaultProfile), billing_cycle_date: today, is_active: true });
     setIsCreateModalOpen(true);
   };
 
@@ -418,11 +446,18 @@ export default function Clients() {
                           <div className="grid grid-cols-2 gap-4">
                             <div>
                               <label className="block text-sm font-medium text-text mb-1">Profil MikroTik</label>
-                              <select value={formData.mikrotik_profile} onChange={e => setFormData({...formData, mikrotik_profile: e.target.value})} className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-white">
-                                <option value="10M">10 Mbps</option>
-                                <option value="20M">20 Mbps</option>
-                                <option value="50M">50 Mbps</option>
-                                <option value="100M">100 Mbps</option>
+                              <select value={formData.mikrotik_profile} onChange={e => {
+                                const val = e.target.value;
+                                const price = getSuggestedPrice(val);
+                                setFormData({...formData, mikrotik_profile: val, monthly_fee: price ? price : formData.monthly_fee});
+                              }} className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-white">
+                                {mikrotikProfiles.length === 0 ? (
+                                  <option value="">Memuat...</option>
+                                ) : (
+                                  mikrotikProfiles.map(p => (
+                                    <option key={p.id} value={p.name}>{p.name}</option>
+                                  ))
+                                )}
                               </select>
                             </div>
                             <div>
@@ -474,13 +509,18 @@ export default function Clients() {
                                     <p className="font-medium">Rp {parseFloat(inv.amount).toLocaleString('id-ID')}</p>
                                     <p className="text-xs text-muted font-mono">{inv.id}</p>
                                   </div>
-                                  <div className="text-right">
+                                  <div className="text-right flex flex-col items-end">
                                     <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
                                       inv.status === 'PAID' ? 'bg-green-100 text-green-800' : inv.status === 'OVERDUE' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'
                                     }`}>
                                       {inv.status === 'PAID' ? 'Lunas' : inv.status === 'OVERDUE' ? 'Jatuh Tempo' : 'Belum Lunas'}
                                     </span>
-                                    <p className="text-[10px] text-muted mt-1">{new Date(inv.due_date).toLocaleDateString('id-ID')}</p>
+                                    <p className="text-[10px] text-muted mt-1 mb-1">{new Date(inv.due_date).toLocaleDateString('id-ID')}</p>
+                                    {inv.status !== 'PAID' && (
+                                      <a href={`https://wa.me/${clientDetails.whatsapp}?text=Halo%20Bapak/Ibu%20${encodeURIComponent(clientDetails.fullname)},%20berikut%20adalah%20pengingat%20tagihan%20internet%20Anda%20sebesar%20Rp%20${parseFloat(inv.amount).toLocaleString('id-ID')}%20dengan%20jatuh%20tempo%20tanggal%20${new Date(inv.due_date).toLocaleDateString('id-ID')}.%20Mohon%20segera%20melakukan%20pembayaran.`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] font-medium text-green-700 bg-green-100 px-2 py-1 rounded hover:bg-green-200 transition-colors">
+                                        <MessageCircle size={12}/> Ingatkan
+                                      </a>
+                                    )}
                                   </div>
                                 </div>
                               ))}
