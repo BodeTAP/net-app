@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { MapPin, Plus, List, Map as MapIcon, X, QrCode, Search, Server, Locate, ChevronDown, CheckCircle, XCircle } from 'lucide-react';
+import { MapPin, Plus, List, Map as MapIcon, X, QrCode, Search, Server, Locate, ChevronDown, ChevronLeft, ChevronRight, CheckCircle, XCircle } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap, Polygon, Polyline } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
