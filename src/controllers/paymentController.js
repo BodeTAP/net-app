@@ -55,7 +55,8 @@ const requestPayment = async (req, res, next) => {
       }
     ];
 
-    const returnUrl = `http://localhost:5173/client/invoices`;
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const returnUrl = `${frontendUrl.replace(/\/$/, '')}/client/invoices`;
 
     const tripayResponse = await tripayService.requestTransaction({
       merchantRef,

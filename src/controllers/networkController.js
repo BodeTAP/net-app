@@ -103,7 +103,6 @@ const importMikrotik = async (req, res, next) => {
 
 const getProfiles = async (req, res, next) => {
   try {
-    const mikrotik = require('../services/mikrotik/live');
     const profiles = await mikrotik.getAllProfiles();
     res.status(200).json({ status: 'success', data: profiles });
   } catch (error) {
@@ -113,7 +112,6 @@ const getProfiles = async (req, res, next) => {
 
 const createProfile = async (req, res, next) => {
   try {
-    const mikrotik = require('../services/mikrotik/live');
     await mikrotik.createProfile(req.body);
     res.status(201).json({ status: 'success', message: 'Profil berhasil dibuat' });
   } catch (error) {
@@ -123,7 +121,6 @@ const createProfile = async (req, res, next) => {
 
 const updateProfile = async (req, res, next) => {
   try {
-    const mikrotik = require('../services/mikrotik/live');
     const { id } = req.params; // Using name as ID
     await mikrotik.updateProfile(id, req.body);
     res.status(200).json({ status: 'success', message: 'Profil berhasil diupdate' });
@@ -134,7 +131,6 @@ const updateProfile = async (req, res, next) => {
 
 const deleteProfile = async (req, res, next) => {
   try {
-    const mikrotik = require('../services/mikrotik/live');
     const { id } = req.params; // Using name as ID
     
     // Check if it's default
@@ -151,7 +147,6 @@ const deleteProfile = async (req, res, next) => {
 
 const getIPPools = async (req, res, next) => {
   try {
-    const mikrotik = require('../services/mikrotik/live');
     const pools = await mikrotik.getIPPools();
     res.status(200).json({ status: 'success', data: pools });
   } catch (error) {

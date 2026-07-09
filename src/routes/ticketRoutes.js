@@ -11,6 +11,7 @@ router.get('/clients', authenticate, ticketController.getClients);
 
 // Ticket CRUD
 router.post('/', authenticate, authorize(['SUPERADMIN']), ticketController.createTicket);
+router.patch('/:id', authenticate, authorize(['SUPERADMIN', 'TECHNICIAN']), ticketController.updateTicketStatus);
 router.patch('/:id/status', authenticate, authorize(['SUPERADMIN', 'TECHNICIAN']), ticketController.updateTicketStatus);
 
 // Resolve Ticket with Photo Upload

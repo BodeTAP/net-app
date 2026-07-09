@@ -13,7 +13,6 @@ Aplikasi ini menyatukan fitur *billing*, manajemen *router* MikroTik, pemetaan O
 * **TailwindCSS** - *Framework styling* utilitas yang cepat dan modern.
 * **Leaflet & OpenStreetMap** - Pemetaan ODP interaktif bebas biaya (tanpa Google Maps API).
 * **Html5-Qrcode** - Sistem pemindai kamera untuk QR Code stiker teknisi.
-* **Recharts** - Visualisasi diagram dan grafik pendapatan.
 * **Lucide React** - Set ikon yang ringan dan konsisten.
 
 ### Backend
@@ -57,7 +56,7 @@ Ikuti langkah-langkah di bawah ini untuk menjalankan proyek NetOps CRM di komput
 ### 1. Persiapan Basis Data (PostgreSQL)
 1. Pastikan Anda telah menginstal **PostgreSQL**.
 2. Buat database baru bernama `netapp_db`.
-3. Jalankan berkas skrip `db/init.sql` (atau jalankan utilitas *seed* yang kami sediakan) untuk membuat struktur tabel dan mengisi data *dummy* awal.
+3. Jalankan migrasi/seed dari backend untuk membuat struktur tabel dan akun awal.
 
 ### 2. Persiapan Backend
 1. Buka terminal pada folder utama proyek (`Net-App`).
@@ -65,9 +64,9 @@ Ikuti langkah-langkah di bawah ini untuk menjalankan proyek NetOps CRM di komput
    ```bash
    npm install
    ```
-3. Buat berkas baru bernama `.env` di folder utama ini dan isi dengan konfigurasi berikut:
+3. Salin `.env.example` menjadi `.env`, lalu sesuaikan konfigurasi database, JWT, MikroTik, dan Tripay:
    ```env
-   PORT=5000
+   PORT=3000
    DB_USER=postgres
    DB_PASSWORD=password_postgres_anda
    DB_HOST=localhost
@@ -76,14 +75,21 @@ Ikuti langkah-langkah di bawah ini untuk menjalankan proyek NetOps CRM di komput
    
    JWT_SECRET=super_secret_key_netapp
    
-   # Ganti ke 'live' jika MikroTik asli sudah tersambung
-   MIKROTIK_MODE=mock
+   MIKROTIK_HOST=192.168.88.1
+   MIKROTIK_USER=admin
+   MIKROTIK_PASS=password_routeros_anda
+   MIKROTIK_PORT=8728
    ```
-4. Jalankan *server* backend:
+4. Jalankan migrasi dan seed:
+   ```bash
+   npm run migrate
+   npm run seed
+   ```
+5. Jalankan *server* backend:
    ```bash
    npm start
    ```
-   *Server akan berjalan di http://localhost:5000*
+   *Server akan berjalan di http://localhost:3000*
 
 ### 3. Persiapan Frontend
 1. Buka jendela terminal baru, arahkan ke dalam folder `frontend`:
