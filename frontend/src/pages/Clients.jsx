@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Plus, QrCode, Printer, Search, Filter, ChevronLeft, ChevronRight, X, Edit, Trash2, PowerOff, CheckCircle, AlertTriangle, FileText, Wrench, MessageCircle, Lock, Unlock, MapPin } from 'lucide-react';
+import { Plus, QrCode, Printer, Search, Filter, ChevronLeft, ChevronRight, X, Edit, Trash2, PowerOff, CheckCircle, AlertTriangle, FileText, Wrench, MessageCircle, Lock, Unlock, MapPin, DownloadCloud, RefreshCw } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import Layout from '../components/Layout';
 
 export default function Clients() {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   const navigate = useNavigate();
 
   // Modals
@@ -140,6 +142,35 @@ export default function Clients() {
     }
   };
 
+  const handleSync = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await axios.post('/api/v1/network/sync', {}, { headers });
+      alert(res.data.message);
+    } catch (err) {
+      alert('Failed to synchronize with MikroTik');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleImport = async () => {
+    if (!window.confirm('Apakah Anda yakin ingin menarik data PPPoE dari MikroTik? Akun PPPoE yang belum ada di CRM akan ditambahkan.')) {
+      return;
+    }
+    
+    setIsImporting(true);
+    try {
+      const res = await axios.post('/api/v1/network/import', {}, { headers });
+      alert(res.data.message);
+      fetchClients(1); // Refresh clients list
+    } catch (err) {
+      alert('Gagal menarik data dari MikroTik');
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   const handleDeactivate = async () => {
     if (!confirm('Apakah Anda yakin ingin menonaktifkan pelanggan ini?')) return;
     try {
@@ -182,12 +213,32 @@ export default function Clients() {
             <h2 className="text-xl font-bold text-text">Manajemen Pelanggan</h2>
             <p className="text-sm text-muted mt-1">Kelola data, detail, dan konfigurasi jaringan pelanggan.</p>
           </div>
-          <button 
-            onClick={openCreateModal}
-            className="bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"
-          >
-            <Plus size={16} /> Tambah Pelanggan
-          </button>
+          <div className="flex gap-2">
+            <button 
+              onClick={handleImport}
+              disabled={isImporting || isSyncing}
+              className="flex items-center gap-2 px-3 py-2 bg-white border border-border text-text rounded-lg hover:bg-gray-50 text-sm font-medium transition-colors disabled:opacity-70"
+              title="Tarik akun PPPoE dari MikroTik"
+            >
+              <DownloadCloud size={16} className={isImporting ? 'animate-bounce' : ''} /> 
+              {isImporting ? 'Menarik...' : 'Tarik'}
+            </button>
+            <button 
+              onClick={handleSync}
+              disabled={isSyncing || isImporting}
+              className="flex items-center gap-2 px-3 py-2 bg-white border border-border text-text rounded-lg hover:bg-gray-50 text-sm font-medium transition-colors disabled:opacity-70"
+              title="Sinkronisasi isolir ke MikroTik"
+            >
+              <RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} /> 
+              {isSyncing ? 'Sinkronisasi...' : 'Sinkron'}
+            </button>
+            <button 
+              onClick={openCreateModal}
+              className="bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors ml-2"
+            >
+              <Plus size={16} /> Tambah
+            </button>
+          </div>
         </div>
 
         {/* Filter & Search Bar */}

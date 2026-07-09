@@ -8,8 +8,6 @@ export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [telemetry, setTelemetry] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [isImporting, setIsImporting] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -56,40 +54,6 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, [navigate]);
 
-  const handleSync = async () => {
-    setIsSyncing(true);
-    try {
-      const token = localStorage.getItem('token');
-      const res = await axios.post('/api/v1/network/sync', {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      alert(res.data.message);
-    } catch (err) {
-      alert('Failed to synchronize with MikroTik');
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const handleImport = async () => {
-    if (!window.confirm('Apakah Anda yakin ingin menarik data PPPoE dari MikroTik? Akun PPPoE yang belum ada di CRM akan ditambahkan.')) {
-      return;
-    }
-    
-    setIsImporting(true);
-    try {
-      const token = localStorage.getItem('token');
-      const res = await axios.post('/api/v1/network/import', {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      alert(res.data.message);
-    } catch (err) {
-      alert('Gagal menarik data dari MikroTik');
-    } finally {
-      setIsImporting(false);
-    }
-  };
-
   if (loading) {
     return (
       <Layout>
@@ -106,24 +70,6 @@ export default function Dashboard() {
         <div>
           <h2 className="text-xl font-bold text-text">Ringkasan Dasbor</h2>
           <p className="text-muted text-sm mt-1">Pantau performa jaringan dan bisnis Anda hari ini.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={handleImport}
-            disabled={isImporting || isSyncing}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-border text-text rounded-lg hover:bg-gray-50 font-medium shadow-sm transition-colors disabled:opacity-70"
-          >
-            <DownloadCloud size={18} className={isImporting ? 'animate-bounce' : ''} /> 
-            {isImporting ? 'Menarik...' : 'Tarik dari MikroTik'}
-          </button>
-          <button 
-            onClick={handleSync}
-            disabled={isSyncing || isImporting}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover font-medium shadow-sm transition-colors disabled:opacity-70"
-          >
-            <RefreshCw size={18} className={isSyncing ? 'animate-spin' : ''} /> 
-            {isSyncing ? 'Sinkronisasi...' : 'Sinkron ke MikroTik'}
-          </button>
         </div>
       </div>
 
