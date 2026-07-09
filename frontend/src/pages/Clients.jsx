@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Plus, QrCode, Printer, Search, Filter, ChevronLeft, ChevronRight, X, Edit, Trash2, PowerOff, CheckCircle, AlertTriangle, FileText, Wrench, MessageCircle } from 'lucide-react';
+import { Plus, QrCode, Printer, Search, Filter, ChevronLeft, ChevronRight, X, Edit, Trash2, PowerOff, CheckCircle, AlertTriangle, FileText, Wrench, MessageCircle, Lock, Unlock, MapPin } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import Layout from '../components/Layout';
 
@@ -34,7 +34,7 @@ export default function Clients() {
   // Form & Profile states
   const [mikrotikProfiles, setMikrotikProfiles] = useState([]);
   const [formData, setFormData] = useState({
-    fullname: '', whatsapp: '', address: '', mikrotik_profile: '', monthly_fee: '', billing_cycle_date: 1, is_active: true
+    fullname: '', whatsapp: '', address: '', mikrotik_profile: '', monthly_fee: '', billing_cycle_date: 1, is_active: true, auto_isolir: true
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -100,7 +100,8 @@ export default function Clients() {
         mikrotik_profile: res.data.data.mikrotik_profile,
         monthly_fee: res.data.data.monthly_fee,
         billing_cycle_date: res.data.data.billing_cycle_date,
-        is_active: res.data.data.is_active
+        is_active: res.data.data.is_active,
+        auto_isolir: res.data.data.auto_isolir
       });
     } catch (err) {
       alert('Gagal mengambil detail pelanggan');
@@ -115,7 +116,7 @@ export default function Clients() {
     try {
       await axios.post('/api/v1/clients', formData, { headers });
       setIsCreateModalOpen(false);
-      setFormData({ fullname: '', whatsapp: '', address: '', mikrotik_profile: mikrotikProfiles[0]?.name || '', monthly_fee: mikrotikProfiles[0]?.monthly_fee || '', billing_cycle_date: 1, is_active: true });
+      setFormData({ fullname: '', whatsapp: '', address: '', mikrotik_profile: mikrotikProfiles[0]?.name || '', monthly_fee: mikrotikProfiles[0]?.monthly_fee || '', billing_cycle_date: 1, is_active: true, auto_isolir: true });
       fetchClients(currentPage);
     } catch (err) {
       alert('Gagal menambah pelanggan. Anda mungkin tidak memiliki izin.');
@@ -164,7 +165,7 @@ export default function Clients() {
   const openCreateModal = () => {
     const today = Math.min(new Date().getDate(), 28);
     const defaultProfile = mikrotikProfiles.length > 0 ? mikrotikProfiles[0].name : 'default';
-    setFormData({ fullname: '', whatsapp: '', address: '', mikrotik_profile: defaultProfile, monthly_fee: getSuggestedPrice(defaultProfile), billing_cycle_date: today, is_active: true });
+    setFormData({ fullname: '', whatsapp: '', address: '', mikrotik_profile: defaultProfile, monthly_fee: getSuggestedPrice(defaultProfile), billing_cycle_date: today, is_active: true, auto_isolir: true });
     setIsCreateModalOpen(true);
   };
 
@@ -223,7 +224,7 @@ export default function Clients() {
                   <th className="px-6 py-3 font-medium">WhatsApp</th>
                   <th className="px-6 py-3 font-medium">Profil & Biaya</th>
                   <th className="px-6 py-3 font-medium">Jatuh Tempo</th>
-                  <th className="px-6 py-3 font-medium">Status</th>
+                  <th className="px-6 py-3 font-medium">Status & Isolir</th>
                   <th className="px-6 py-3 font-medium">Aksi</th>
                 </tr>
               </thead>
@@ -256,11 +257,18 @@ export default function Clients() {
                       </td>
                       <td className="px-6 py-4 text-text text-sm">Tgl {client.billing_cycle_date}</td>
                       <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                          client.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}>
-                          {client.is_active ? 'Aktif' : 'Nonaktif'}
-                        </span>
+                        <div className="flex flex-col gap-1 items-start">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            client.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          }`}>
+                            {client.is_active ? 'Aktif' : 'Terisolir (Nonaktif)'}
+                          </span>
+                          <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded border ${
+                            client.auto_isolir ? 'bg-gray-100 text-gray-600 border-gray-200' : 'bg-amber-50 text-amber-600 border-amber-200'
+                          }`}>
+                            {client.auto_isolir ? 'Auto-Isolir: ON' : 'Auto-Isolir: OFF (Leluasa)'}
+                          </span>
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex gap-2">
@@ -273,8 +281,24 @@ export default function Clients() {
                           <button 
                             onClick={() => setSelectedQRClient(client)}
                             className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md transition-colors text-xs font-medium"
+                            title="QR Code Stiker"
                           >
                             <QrCode size={14} />
+                          </button>
+                          <button 
+                            onClick={async () => {
+                              if (!confirm(`Apakah Anda yakin ingin ${client.is_active ? 'mengisolir' : 'membuka isolir'} pelanggan ini secara manual?`)) return;
+                              try {
+                                await axios.patch(`/api/v1/clients/${client.id}`, { is_active: !client.is_active }, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+                                fetchClients(currentPage);
+                              } catch (err) {
+                                alert('Gagal mengubah status isolir.');
+                              }
+                            }}
+                            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-colors text-xs font-medium ${client.is_active ? 'bg-amber-50 text-amber-600 hover:bg-amber-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}
+                            title={client.is_active ? 'Isolir Manual' : 'Buka Isolir Manual'}
+                          >
+                            {client.is_active ? <Lock size={14} /> : <Unlock size={14} />}
                           </button>
                         </div>
                       </td>
@@ -364,9 +388,18 @@ export default function Clients() {
                       <input type="number" required value={formData.monthly_fee} onChange={e => setFormData({...formData, monthly_fee: e.target.value})} className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-text mb-1">Tanggal Jatuh Tempo (1-28)</label>
-                    <input type="number" min="1" max="28" required value={formData.billing_cycle_date} onChange={e => setFormData({...formData, billing_cycle_date: parseInt(e.target.value)})} className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-text mb-1">Tanggal Jatuh Tempo (1-28)</label>
+                      <input type="number" min="1" max="28" required value={formData.billing_cycle_date} onChange={e => setFormData({...formData, billing_cycle_date: parseInt(e.target.value)})} className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-text mb-1">Auto Isolir (Tagihan)</label>
+                      <select value={formData.auto_isolir} onChange={e => setFormData({...formData, auto_isolir: e.target.value === 'true'})} className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-white">
+                        <option value="true">Ya, Isolir Otomatis</option>
+                        <option value="false">Tidak (Beri Kelonggaran)</option>
+                      </select>
+                    </div>
                   </div>
                 </form>
               </div>
@@ -458,16 +491,23 @@ export default function Clients() {
                               <input type="number" required value={formData.monthly_fee} onChange={e => setFormData({...formData, monthly_fee: e.target.value})} className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
                             </div>
                           </div>
-                          <div className="grid grid-cols-2 gap-4">
+                          <div className="grid grid-cols-3 gap-4">
                             <div>
-                              <label className="block text-sm font-medium text-text mb-1">Jatuh Tempo (Tgl)</label>
+                              <label className="block text-sm font-medium text-text mb-1">Jatuh Tempo</label>
                               <input type="number" min="1" max="28" required value={formData.billing_cycle_date} onChange={e => setFormData({...formData, billing_cycle_date: parseInt(e.target.value)})} className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-text mb-1">Auto Isolir</label>
+                              <select value={formData.auto_isolir} onChange={e => setFormData({...formData, auto_isolir: e.target.value === 'true'})} className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-white">
+                                <option value="true">Ya (Otomatis)</option>
+                                <option value="false">Tidak (Leluasa)</option>
+                              </select>
                             </div>
                             <div>
                               <label className="block text-sm font-medium text-text mb-1">Status</label>
                               <select value={formData.is_active} onChange={e => setFormData({...formData, is_active: e.target.value === 'true'})} className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-white">
                                 <option value="true">Aktif</option>
-                                <option value="false">Nonaktif</option>
+                                <option value="false">Nonaktif (Isolir)</option>
                               </select>
                             </div>
                           </div>
@@ -476,8 +516,24 @@ export default function Clients() {
                         <div className="space-y-4">
                           <div><p className="text-xs text-muted">ID Pelanggan</p><p className="font-mono text-sm">{clientDetails?.id}</p></div>
                           <div><p className="text-xs text-muted">Nama Lengkap</p><p className="font-medium">{clientDetails?.fullname}</p></div>
-                          <div><p className="text-xs text-muted">WhatsApp</p><p className="font-medium text-primary">{clientDetails?.whatsapp}</p></div>
-                          <div><p className="text-xs text-muted">Alamat</p><p className="text-sm bg-gray-50 p-2 rounded border mt-1">{clientDetails?.address}</p></div>
+                          <div>
+                            <p className="text-xs text-muted mb-1">WhatsApp</p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-primary">{clientDetails?.whatsapp}</p>
+                              <a href={`https://wa.me/${clientDetails?.whatsapp}`} target="_blank" rel="noopener noreferrer" className="bg-green-100 text-green-700 p-1 rounded hover:bg-green-200 transition-colors" title="Hubungi WA">
+                                <MessageCircle size={14} />
+                              </a>
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted mb-1">Alamat</p>
+                            <p className="text-sm bg-gray-50 p-2 rounded border">{clientDetails?.address}</p>
+                            {clientDetails?.coordinates && (
+                              <a href={`https://maps.google.com/?q=${clientDetails.coordinates}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] bg-blue-50 text-blue-600 px-2 py-1 rounded mt-2 border border-blue-100 hover:bg-blue-100 transition-colors">
+                                <MapPin size={12}/> Buka di Google Maps
+                              </a>
+                            )}
+                          </div>
                           <div className="grid grid-cols-2 gap-4 bg-blue-50 p-3 rounded-lg border border-blue-100">
                             <div><p className="text-xs text-blue-600/70">Profil</p><p className="font-bold text-blue-800">{clientDetails?.mikrotik_profile}</p></div>
                             <div><p className="text-xs text-blue-600/70">Biaya / Bulan</p><p className="font-bold text-blue-800">Rp {parseFloat(clientDetails?.monthly_fee).toLocaleString('id-ID')}</p></div>

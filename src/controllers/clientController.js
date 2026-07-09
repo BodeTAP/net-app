@@ -32,7 +32,7 @@ const getClients = async (req, res, next) => {
     const totalPages = Math.ceil(totalItems / limit);
 
     const result = await query(`
-      SELECT c.id, c.qr_token, c.fullname, c.whatsapp, c.address, c.coordinates, c.mikrotik_profile, c.monthly_fee, c.billing_cycle_date, c.is_active, c.created_at, p.odp_id
+      SELECT c.id, c.qr_token, c.fullname, c.whatsapp, c.address, c.coordinates, c.mikrotik_profile, c.monthly_fee, c.billing_cycle_date, c.is_active, c.auto_isolir, c.created_at, p.odp_id
       FROM clients c
       LEFT JOIN port_assignments p ON c.id = p.client_id
       ${whereClauseJoin}
@@ -82,14 +82,14 @@ const getClientDetails = async (req, res, next) => {
 
 const createClient = async (req, res, next) => {
   try {
-    const { fullname, whatsapp, address, mikrotik_profile, monthly_fee, billing_cycle_date } = req.body;
+    const { fullname, whatsapp, address, mikrotik_profile, monthly_fee, billing_cycle_date, auto_isolir } = req.body;
     
     const id = `CL-${Date.now()}`;
     const qr_token = crypto.randomUUID();
 
     const insertQuery = `
-      INSERT INTO clients (id, qr_token, fullname, whatsapp, address, mikrotik_profile, monthly_fee, billing_cycle_date, password_hash)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      INSERT INTO clients (id, qr_token, fullname, whatsapp, address, mikrotik_profile, monthly_fee, billing_cycle_date, auto_isolir, password_hash)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *
     `;
     
@@ -98,7 +98,7 @@ const createClient = async (req, res, next) => {
     const password_hash = await bcrypt.hash(password, 10);
 
     const result = await query(insertQuery, [
-      id, qr_token, fullname, whatsapp, address, mikrotik_profile, monthly_fee, billing_cycle_date || 1, password_hash
+      id, qr_token, fullname, whatsapp, address, mikrotik_profile, monthly_fee, billing_cycle_date || 1, auto_isolir !== undefined ? auto_isolir : true, password_hash
     ]);
 
     // Trigger MikroTik Sync (Create PPPoE Secret)
@@ -120,7 +120,7 @@ const createClient = async (req, res, next) => {
 const updateClient = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { fullname, whatsapp, address, mikrotik_profile, monthly_fee, billing_cycle_date, is_active } = req.body;
+    const { fullname, whatsapp, address, mikrotik_profile, monthly_fee, billing_cycle_date, is_active, auto_isolir } = req.body;
 
     let updateFields = [];
     let params = [];
@@ -133,6 +133,7 @@ const updateClient = async (req, res, next) => {
     if (monthly_fee) { updateFields.push(`monthly_fee = $${paramIndex}`); params.push(monthly_fee); paramIndex++; }
     if (billing_cycle_date) { updateFields.push(`billing_cycle_date = $${paramIndex}`); params.push(billing_cycle_date); paramIndex++; }
     if (is_active !== undefined) { updateFields.push(`is_active = $${paramIndex}`); params.push(is_active); paramIndex++; }
+    if (auto_isolir !== undefined) { updateFields.push(`auto_isolir = $${paramIndex}`); params.push(auto_isolir); paramIndex++; }
 
     if (updateFields.length === 0) {
       return res.status(400).json({ status: 'error', message: 'Tidak ada data yang diubah' });
