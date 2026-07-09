@@ -9,6 +9,7 @@ export default function Invoices() {
   const [loading, setLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [selectedInvoices, setSelectedInvoices] = useState([]);
 
   // Filter & Search
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -56,6 +57,7 @@ export default function Invoices() {
 
   useEffect(() => {
     setCurrentPage(1);
+    setSelectedInvoices([]);
     fetchInvoices(1);
   }, [statusFilter, searchQuery]);
 
@@ -98,6 +100,32 @@ export default function Invoices() {
       setSelectedInvoice(null);
     } catch (err) {
       alert('Gagal membatalkan tagihan');
+    }
+  };
+
+  const handleBulkPay = async () => {
+    if (!confirm(`Apakah Anda yakin ingin melunasi ${selectedInvoices.length} tagihan secara bersamaan?`)) return;
+    try {
+      const res = await axios.post('/api/v1/invoices/bulk-pay', { ids: selectedInvoices }, { headers });
+      alert(res.data.message);
+      setSelectedInvoices([]);
+      fetchInvoices(currentPage);
+      fetchSummary();
+    } catch (err) {
+      alert('Gagal memproses pembayaran massal');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!confirm(`Apakah Anda yakin ingin menghapus ${selectedInvoices.length} tagihan secara permanen?`)) return;
+    try {
+      const res = await axios.post('/api/v1/invoices/bulk-delete', { ids: selectedInvoices }, { headers });
+      alert(res.data.message);
+      setSelectedInvoices([]);
+      fetchInvoices(currentPage);
+      fetchSummary();
+    } catch (err) {
+      alert('Gagal menghapus tagihan secara massal');
     }
   };
 
@@ -252,6 +280,20 @@ export default function Invoices() {
           <table className="w-full text-left text-sm">
             <thead className="bg-gray-50 text-muted border-b border-border">
               <tr>
+                <th className="px-4 py-3 text-center">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    checked={invoices.length > 0 && selectedInvoices.length === invoices.length}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedInvoices(invoices.map(inv => inv.id));
+                      } else {
+                        setSelectedInvoices([]);
+                      }
+                    }}
+                  />
+                </th>
                 <th className="px-6 py-3 font-medium">ID Tagihan</th>
                 <th className="px-6 py-3 font-medium">Pelanggan</th>
                 <th className="px-6 py-3 font-medium">Jatuh Tempo</th>
@@ -262,10 +304,10 @@ export default function Invoices() {
             </thead>
             <tbody className="divide-y divide-border">
               {loading ? (
-                <tr><td colSpan="6" className="px-6 py-8 text-center text-muted">Memuat...</td></tr>
+                <tr><td colSpan="7" className="px-6 py-8 text-center text-muted">Memuat...</td></tr>
               ) : invoices.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-8 text-center text-muted">
+                  <td colSpan="7" className="px-6 py-8 text-center text-muted">
                     {searchQuery || statusFilter !== 'ALL'
                       ? 'Tidak ada tagihan yang sesuai filter.'
                       : 'Belum ada tagihan. Klik "Jalankan Mesin Tagihan" untuk mencetak.'}
@@ -274,6 +316,20 @@ export default function Invoices() {
               ) : (
                 invoices.map((inv) => (
                   <tr key={inv.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-4 text-center">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                        checked={selectedInvoices.includes(inv.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedInvoices([...selectedInvoices, inv.id]);
+                          } else {
+                            setSelectedInvoices(selectedInvoices.filter(id => id !== inv.id));
+                          }
+                        }}
+                      />
+                    </td>
                     <td className="px-6 py-4 font-mono text-xs text-muted">{inv.id}</td>
                     <td className="px-6 py-4">
                       <div className="font-medium text-text">{inv.fullname}</div>
@@ -438,6 +494,40 @@ export default function Invoices() {
           </div>
         </div>
       )}
+
+      {/* Bulk Actions Bar */}
+      {selectedInvoices.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-6 py-4 rounded-full shadow-2xl flex items-center gap-6 z-50 animate-in slide-in-from-bottom-5">
+          <div className="flex items-center gap-2">
+            <span className="bg-primary/20 text-primary-light px-2.5 py-1 rounded-full text-sm font-bold">
+              {selectedInvoices.length}
+            </span>
+            <span className="text-sm font-medium">Tagihan Dipilih</span>
+          </div>
+          <div className="w-px h-6 bg-gray-700"></div>
+          <div className="flex gap-2">
+            <button 
+              onClick={handleBulkPay}
+              className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-full text-sm font-bold transition-colors"
+            >
+              <CheckCircle size={16} /> Tandai Lunas
+            </button>
+            <button 
+              onClick={handleBulkDelete}
+              className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-full text-sm font-bold transition-colors"
+            >
+              <Trash2 size={16} /> Hapus
+            </button>
+          </div>
+          <button 
+            onClick={() => setSelectedInvoices([])}
+            className="p-1 hover:bg-gray-800 rounded-full transition-colors ml-2"
+          >
+            <X size={18} className="text-gray-400 hover:text-white" />
+          </button>
+        </div>
+      )}
+
     </Layout>
   );
 }

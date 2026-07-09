@@ -184,4 +184,59 @@ const deleteInvoice = async (req, res, next) => {
   }
 };
 
-module.exports = { getInvoices, getSummary, generateInvoices, simulatePayment, deleteInvoice };
+const bulkDelete = async (req, res, next) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ status: 'error', message: 'Tidak ada ID tagihan yang diberikan' });
+    }
+    
+    // We can use ANY($1) syntax for array in Postgres
+    await query(`DELETE FROM invoices WHERE id = ANY($1)`, [ids]);
+    
+    res.status(200).json({ status: 'success', message: `${ids.length} tagihan berhasil dibatalkan` });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const bulkPay = async (req, res, next) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ status: 'error', message: 'Tidak ada ID tagihan yang diberikan' });
+    }
+
+    const result = await query(
+      `UPDATE invoices SET status = 'PAID', paid_at = CURRENT_TIMESTAMP WHERE id = ANY($1) RETURNING *`,
+      [ids]
+    );
+
+    // Un-isolir each client
+    for (const inv of result.rows) {
+      try {
+        const clientRes = await query('SELECT ip_address FROM clients WHERE id = $1', [inv.client_id]);
+        if (clientRes.rows.length > 0) {
+          const clientIp = clientRes.rows[0].ip_address || '0.0.0.0';
+          await mikrotik.removeFromIsolir(clientIp, inv.client_id);
+        }
+      } catch (err) {
+        console.error(`Gagal un-isolir klien ${inv.client_id}:`, err.message);
+      }
+    }
+
+    res.status(200).json({ status: 'success', message: `${result.rows.length} tagihan berhasil dilunasi` });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  getInvoices,
+  getSummary,
+  generateInvoices,
+  simulatePayment,
+  deleteInvoice,
+  bulkDelete,
+  bulkPay
+};
