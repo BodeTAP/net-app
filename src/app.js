@@ -57,7 +57,7 @@ app.use('/api/v1/packages', packageRoutes);
 app.use('/api/v1/settings', settingRoutes);
 
 // Catch-all route for React Router (Harus berada di bawah semua rute API)
-app.get('*', (req, res) => {
+app.get(/.*/, (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
 });
 
