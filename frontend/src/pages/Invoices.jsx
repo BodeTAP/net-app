@@ -67,6 +67,8 @@ export default function Invoices() {
   };
 
   const handleRunBilling = async () => {
+    if (!window.confirm('Buat tagihan bulanan untuk pelanggan aktif? Proses ini tidak menjalankan isolir.')) return;
+
     setIsGenerating(true);
     try {
       const res = await axios.post('/api/v1/invoices/generate', {}, { headers });
@@ -74,7 +76,7 @@ export default function Invoices() {
       fetchInvoices(currentPage);
       fetchSummary();
     } catch (err) {
-      alert('Gagal mencetak tagihan');
+      alert(err.response?.data?.message || 'Gagal membuat tagihan');
     } finally {
       setIsGenerating(false);
     }
@@ -203,7 +205,7 @@ export default function Invoices() {
             disabled={isGenerating}
             className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover font-medium shadow-sm transition-colors disabled:opacity-70 text-sm"
           >
-            <Play size={16} fill="currentColor" /> {isGenerating ? 'Memproses...' : 'Jalankan Mesin Tagihan'}
+            <Play size={16} fill="currentColor" /> {isGenerating ? 'Memproses...' : 'Generate Tagihan'}
           </button>
         </div>
       </div>

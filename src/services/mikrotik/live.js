@@ -15,13 +15,13 @@ const config = {
 };
 
 const wanIface = process.env.MIKROTIK_WAN_IFACE || 'ether1';
-const mikrotikWritesEnabled = ['true', '1', 'yes'].includes(
-  String(process.env.MIKROTIK_WRITE_ENABLED || 'false').toLowerCase()
+const isEnabled = (name) => ['true', '1', 'yes'].includes(
+  String(process.env[name] || 'false').toLowerCase()
 );
 
-const assertMikrotikWritesEnabled = () => {
-  if (!mikrotikWritesEnabled) {
-    throw new Error('Operasi tulis MikroTik dinonaktifkan. Set MIKROTIK_WRITE_ENABLED=true untuk mengaktifkannya.');
+const assertFeatureEnabled = (flag, feature) => {
+  if (!isEnabled(flag)) {
+    throw new Error(`${feature} dinonaktifkan. Set ${flag}=true untuk mengaktifkannya.`);
   }
 };
 
@@ -92,7 +92,7 @@ const getTrafficStats = async () => {
 };
 
 const createPPPoESecret = async (clientId, profile, pppoePassword) => {
-  assertMikrotikWritesEnabled();
+  assertFeatureEnabled('MIKROTIK_PROVISIONING_ENABLED', 'Provisioning MikroTik');
   return execMikrotik(async (conn) => {
     const menu = conn.menu('/ppp/secret');
     const exists = await menu.where('name', clientId).get();
@@ -113,7 +113,7 @@ const createPPPoESecret = async (clientId, profile, pppoePassword) => {
 };
 
 const updateSecretProfile = async (clientId, profile) => {
-  assertMikrotikWritesEnabled();
+  assertFeatureEnabled('MIKROTIK_PROVISIONING_ENABLED', 'Provisioning MikroTik');
   return execMikrotik(async (conn) => {
     const menu = conn.menu('/ppp/secret');
     const exists = await menu.where('name', clientId).get();
@@ -129,7 +129,7 @@ const updateSecretProfile = async (clientId, profile) => {
 };
 
 const removeQueue = async (clientId) => {
-  assertMikrotikWritesEnabled();
+  assertFeatureEnabled('MIKROTIK_PROVISIONING_ENABLED', 'Provisioning MikroTik');
   return execMikrotik(async (conn) => {
     const menu = conn.menu('/ppp/secret');
     const exists = await menu.where('name', clientId).get();
@@ -152,7 +152,7 @@ const removeQueue = async (clientId) => {
 };
 
 const addToIsolir = async (ipAddress, clientId) => {
-  assertMikrotikWritesEnabled();
+  assertFeatureEnabled('MIKROTIK_ISOLATION_ENABLED', 'Isolir MikroTik');
   return execMikrotik(async (conn) => {
     const menu = conn.menu('/ppp/secret');
     const exists = await menu.where('name', clientId).get();
@@ -175,7 +175,7 @@ const addToIsolir = async (ipAddress, clientId) => {
 };
 
 const removeFromIsolir = async (ipAddress, clientId) => {
-  assertMikrotikWritesEnabled();
+  assertFeatureEnabled('MIKROTIK_ISOLATION_ENABLED', 'Isolir MikroTik');
   return execMikrotik(async (conn) => {
     // Cari original profile dari database
     const dbClient = await query('SELECT mikrotik_profile FROM clients WHERE id = $1', [clientId]);
@@ -263,7 +263,7 @@ const getAllProfiles = async () => {
 };
 
 const createProfile = async (data) => {
-  assertMikrotikWritesEnabled();
+  assertFeatureEnabled('MIKROTIK_PROFILE_WRITE_ENABLED', 'Manajemen profil MikroTik');
   return execMikrotik(async (conn) => {
     await conn.menu('/ppp/profile').add({
       name: data.name,
@@ -276,7 +276,7 @@ const createProfile = async (data) => {
 };
 
 const updateProfile = async (name, data) => {
-  assertMikrotikWritesEnabled();
+  assertFeatureEnabled('MIKROTIK_PROFILE_WRITE_ENABLED', 'Manajemen profil MikroTik');
   return execMikrotik(async (conn) => {
     const menu = conn.menu('/ppp/profile');
     const profiles = await menu.where('name', name).get();
@@ -294,7 +294,7 @@ const updateProfile = async (name, data) => {
 };
 
 const deleteProfile = async (name) => {
-  assertMikrotikWritesEnabled();
+  assertFeatureEnabled('MIKROTIK_PROFILE_WRITE_ENABLED', 'Manajemen profil MikroTik');
   return execMikrotik(async (conn) => {
     const menu = conn.menu('/ppp/profile');
     const profiles = await menu.where('name', name).get();

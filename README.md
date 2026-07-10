@@ -79,9 +79,13 @@ Ikuti langkah-langkah di bawah ini untuk menjalankan proyek NetOps CRM di komput
    MIKROTIK_USER=admin
    MIKROTIK_PASS=password_routeros_anda
    MIKROTIK_PORT=8728
-   MIKROTIK_WRITE_ENABLED=false
+   MIKROTIK_PROVISIONING_ENABLED=false
+   MIKROTIK_ISOLATION_ENABLED=false
+   MIKROTIK_PROFILE_WRITE_ENABLED=false
 
    ENABLE_BILLING_CRON=false
+   ENABLE_AUTO_ISOLIR=false
+   AUTO_ISOLIR_GRACE_DAYS=3
    ```
 4. Jalankan migrasi dan seed:
    ```bash
