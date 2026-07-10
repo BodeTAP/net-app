@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Plus, QrCode, Printer, Search, Filter, ChevronLeft, ChevronRight, X, Edit, Trash2, PowerOff, CheckCircle, AlertTriangle, FileText, Wrench, MessageCircle, Lock, Unlock, MapPin, DownloadCloud, RefreshCw } from 'lucide-react';
+import { Plus, QrCode, Printer, Search, Filter, ChevronLeft, ChevronRight, X, Edit, PowerOff, CheckCircle, FileText, Wrench, MessageCircle, Lock, Unlock, MapPin, DownloadCloud, RefreshCw } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import Layout from '../components/Layout';
 
@@ -10,6 +10,8 @@ export default function Clients() {
   const [loading, setLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [syncPreview, setSyncPreview] = useState(null);
+  const [isSyncPreviewOpen, setIsSyncPreviewOpen] = useState(false);
   const navigate = useNavigate();
 
   // Modals
@@ -36,12 +38,26 @@ export default function Clients() {
   // Form & Profile states
   const [mikrotikProfiles, setMikrotikProfiles] = useState([]);
   const [formData, setFormData] = useState({
-    fullname: '', whatsapp: '', address: '', mikrotik_profile: '', monthly_fee: '', billing_cycle_date: 1, is_active: true, auto_isolir: true
+    fullname: '', whatsapp: '', address: '', mikrotik_profile: '', monthly_fee: '', billing_cycle_date: 1, is_active: true, auto_isolir: true, portal_password: '', pppoe_password: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const token = localStorage.getItem('token');
   const headers = { Authorization: `Bearer ${token}` };
+  const currentUser = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('user') || '{}');
+    } catch {
+      return {};
+    }
+  })();
+  const canReconcile = currentUser.role === 'SUPERADMIN';
+  const syncActionLabel = {
+    IMPORT_FROM_ROUTER: 'Impor dari Winbox',
+    UPDATE_FROM_ROUTER: 'Perbarui dari Winbox',
+    RESTORE_FROM_ARCHIVE: 'Pulihkan dari arsip',
+    ARCHIVE_MISSING_IN_ROUTER: 'Arsipkan dari CRM'
+  };
 
   const fetchProfiles = async () => {
     try {
@@ -53,12 +69,12 @@ export default function Clients() {
     }
   };
 
-  const fetchClients = async (page = 1) => {
+  const fetchClients = async (page = 1, filter = statusFilter) => {
     if (!token) return navigate('/login');
     setLoading(true);
     try {
       const params = { page, limit: 10 };
-      if (statusFilter !== 'ALL') params.status = statusFilter;
+      if (filter !== 'ALL') params.status = filter;
       if (searchQuery) params.search = searchQuery;
 
       const res = await axios.get('/api/v1/clients', { headers, params });
@@ -103,7 +119,9 @@ export default function Clients() {
         monthly_fee: res.data.data.monthly_fee,
         billing_cycle_date: res.data.data.billing_cycle_date,
         is_active: res.data.data.is_active,
-        auto_isolir: res.data.data.auto_isolir
+        auto_isolir: res.data.data.auto_isolir,
+        portal_password: '',
+        pppoe_password: ''
       });
     } catch (err) {
       alert('Gagal mengambil detail pelanggan');
@@ -116,12 +134,14 @@ export default function Clients() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await axios.post('/api/v1/clients', formData, { headers });
+      const res = await axios.post('/api/v1/clients', formData, { headers });
       setIsCreateModalOpen(false);
-      setFormData({ fullname: '', whatsapp: '', address: '', mikrotik_profile: mikrotikProfiles[0]?.name || '', monthly_fee: mikrotikProfiles[0]?.monthly_fee || '', billing_cycle_date: 1, is_active: true, auto_isolir: true });
+      setSyncPreview(null);
+      setFormData({ fullname: '', whatsapp: '', address: '', mikrotik_profile: mikrotikProfiles[0]?.name || '', monthly_fee: mikrotikProfiles[0]?.monthly_fee || '', billing_cycle_date: 1, is_active: true, auto_isolir: true, portal_password: '', pppoe_password: '' });
       fetchClients(currentPage);
+      if (res.data.warning) alert(res.data.warning);
     } catch (err) {
-      alert('Gagal menambah pelanggan. Anda mungkin tidak memiliki izin.');
+      alert(err.response?.data?.message || 'Gagal menambah pelanggan. Anda mungkin tidak memiliki izin.');
     } finally {
       setIsSubmitting(false);
     }
@@ -131,41 +151,62 @@ export default function Clients() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await axios.patch(`/api/v1/clients/${selectedClient.id}`, formData, { headers });
+      const { pppoe_password, ...payload } = formData;
+      await axios.patch(`/api/v1/clients/${selectedClient.id}`, payload, { headers });
       setIsEditMode(false);
+      setSyncPreview(null);
       handleOpenDetail(selectedClient); // Refresh detail
       fetchClients(currentPage); // Refresh list
     } catch (err) {
-      alert('Gagal memperbarui pelanggan.');
+      alert(err.response?.data?.message || 'Gagal memperbarui pelanggan.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleSync = async () => {
+  const handleCheck = async () => {
     setIsSyncing(true);
     try {
       const res = await axios.post('/api/v1/network/sync', {}, { headers });
-      alert(res.data.message);
+      setSyncPreview(res.data.data);
+      setIsSyncPreviewOpen(true);
     } catch (err) {
-      alert('Failed to synchronize with MikroTik');
+      alert('Gagal memeriksa kesesuaian data MikroTik');
     } finally {
       setIsSyncing(false);
     }
   };
 
-  const handleImport = async () => {
-    if (!window.confirm('Apakah Anda yakin ingin menarik data PPPoE dari MikroTik? Akun PPPoE yang belum ada di CRM akan ditambahkan.')) {
+  const handleReconcile = async () => {
+    if (!syncPreview) {
+      alert('Jalankan Periksa terlebih dahulu agar perubahan dapat ditinjau.');
+      return;
+    }
+
+    const confirmation = [
+      'Winbox akan dijadikan sumber data jaringan.',
+      `${syncPreview.toImport} pelanggan akan diimpor.`,
+      `${syncPreview.toUpdate} pelanggan akan diperbarui.`,
+      `${syncPreview.toArchive} data CRM-only akan diarsipkan.`,
+      'RouterOS tidak akan diubah. Lanjutkan?'
+    ].join('\n');
+
+    if (!window.confirm(confirmation)) {
       return;
     }
     
     setIsImporting(true);
     try {
-      const res = await axios.post('/api/v1/network/import', {}, { headers });
+      const res = await axios.post('/api/v1/network/reconcile', {
+        confirmation: 'WINBOX_SOURCE_OF_TRUTH'
+      }, { headers });
       alert(res.data.message);
-      fetchClients(1); // Refresh clients list
+      setSyncPreview(null);
+      setIsSyncPreviewOpen(false);
+      setStatusFilter('ALL');
+      fetchClients(1, 'ALL');
     } catch (err) {
-      alert('Gagal menarik data dari MikroTik');
+      alert(err.response?.data?.message || 'Gagal menyesuaikan data dengan Winbox');
     } finally {
       setIsImporting(false);
     }
@@ -176,6 +217,7 @@ export default function Clients() {
     try {
       await axios.delete(`/api/v1/clients/${selectedClient.id}`, { headers });
       setIsDetailModalOpen(false);
+      setSyncPreview(null);
       fetchClients(currentPage);
     } catch (err) {
       alert('Gagal menonaktifkan pelanggan.');
@@ -187,6 +229,7 @@ export default function Clients() {
     try {
       await axios.patch(`/api/v1/clients/${selectedClient.id}`, { is_active: true }, { headers });
       setIsDetailModalOpen(false);
+      setSyncPreview(null);
       fetchClients(currentPage);
     } catch (err) {
       alert('Gagal mengaktifkan pelanggan.');
@@ -201,7 +244,7 @@ export default function Clients() {
   const openCreateModal = () => {
     const today = Math.min(new Date().getDate(), 28);
     const defaultProfile = mikrotikProfiles.length > 0 ? mikrotikProfiles[0].name : 'default';
-    setFormData({ fullname: '', whatsapp: '', address: '', mikrotik_profile: defaultProfile, monthly_fee: getSuggestedPrice(defaultProfile), billing_cycle_date: today, is_active: true, auto_isolir: true });
+    setFormData({ fullname: '', whatsapp: '', address: '', mikrotik_profile: defaultProfile, monthly_fee: getSuggestedPrice(defaultProfile), billing_cycle_date: today, is_active: true, auto_isolir: true, portal_password: '', pppoe_password: '' });
     setIsCreateModalOpen(true);
   };
 
@@ -214,24 +257,28 @@ export default function Clients() {
             <p className="text-sm text-muted mt-1">Kelola data, detail, dan konfigurasi jaringan pelanggan.</p>
           </div>
           <div className="flex gap-2">
-            <button 
-              onClick={handleImport}
-              disabled={isImporting || isSyncing}
-              className="flex items-center gap-2 px-3 py-2 bg-white border border-border text-text rounded-lg hover:bg-gray-50 text-sm font-medium transition-colors disabled:opacity-70"
-              title="Tarik akun PPPoE dari MikroTik"
-            >
-              <DownloadCloud size={16} className={isImporting ? 'animate-bounce' : ''} /> 
-              {isImporting ? 'Menarik...' : 'Tarik'}
-            </button>
-            <button 
-              onClick={handleSync}
-              disabled={isSyncing || isImporting}
-              className="flex items-center gap-2 px-3 py-2 bg-white border border-border text-text rounded-lg hover:bg-gray-50 text-sm font-medium transition-colors disabled:opacity-70"
-              title="Sinkronisasi isolir ke MikroTik"
-            >
-              <RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} /> 
-              {isSyncing ? 'Sinkronisasi...' : 'Sinkron'}
-            </button>
+            {canReconcile && (
+              <>
+                <button
+                  onClick={() => setIsSyncPreviewOpen(true)}
+                  disabled={isImporting || isSyncing || !syncPreview}
+                  className="flex items-center gap-2 px-3 py-2 bg-white border border-border text-text rounded-lg hover:bg-gray-50 text-sm font-medium transition-colors disabled:opacity-50"
+                  title="Sesuaikan data CRM mengikuti Winbox"
+                >
+                  <DownloadCloud size={16} className={isImporting ? 'animate-bounce' : ''} />
+                  {isImporting ? 'Menyesuaikan...' : 'Samakan'}
+                </button>
+                <button
+                  onClick={handleCheck}
+                  disabled={isSyncing || isImporting}
+                  className="flex items-center gap-2 px-3 py-2 bg-white border border-border text-text rounded-lg hover:bg-gray-50 text-sm font-medium transition-colors disabled:opacity-70"
+                  title="Periksa perbedaan data tanpa mengubah MikroTik"
+                >
+                  <RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} />
+                  {isSyncing ? 'Memeriksa...' : 'Periksa'}
+                </button>
+              </>
+            )}
             <button 
               onClick={openCreateModal}
               className="bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors ml-2"
@@ -255,7 +302,7 @@ export default function Clients() {
           </form>
           <div className="flex items-center gap-2">
             <Filter size={16} className="text-muted" />
-            {['ALL', 'ACTIVE', 'INACTIVE'].map((s) => (
+            {['ALL', 'ACTIVE', 'INACTIVE', 'ARCHIVED'].map((s) => (
               <button
                 key={s}
                 onClick={() => setStatusFilter(s)}
@@ -265,7 +312,7 @@ export default function Clients() {
                     : 'bg-white text-muted border border-border hover:bg-gray-50'
                 }`}
               >
-                {s === 'ALL' ? 'Semua' : s === 'ACTIVE' ? 'Aktif' : 'Nonaktif'}
+                {s === 'ALL' ? 'Semua' : s === 'ACTIVE' ? 'Aktif' : s === 'INACTIVE' ? 'Nonaktif' : 'Arsip'}
               </button>
             ))}
           </div>
@@ -315,9 +362,9 @@ export default function Clients() {
                       <td className="px-6 py-4">
                         <div className="flex flex-col gap-1 items-start">
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            client.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                            client.is_archived ? 'bg-gray-200 text-gray-700' : client.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                           }`}>
-                            {client.is_active ? 'Aktif' : 'Terisolir (Nonaktif)'}
+                            {client.is_archived ? 'Arsip' : client.is_active ? 'Aktif' : 'Terisolir (Nonaktif)'}
                           </span>
                           <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded border ${
                             client.auto_isolir ? 'bg-gray-100 text-gray-600 border-gray-200' : 'bg-amber-50 text-amber-600 border-amber-200'
@@ -341,21 +388,24 @@ export default function Clients() {
                           >
                             <QrCode size={14} />
                           </button>
-                          <button 
-                            onClick={async () => {
-                              if (!confirm(`Apakah Anda yakin ingin ${client.is_active ? 'mengisolir' : 'membuka isolir'} pelanggan ini secara manual?`)) return;
-                              try {
-                                await axios.patch(`/api/v1/clients/${client.id}`, { is_active: !client.is_active }, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
-                                fetchClients(currentPage);
-                              } catch (err) {
-                                alert('Gagal mengubah status isolir.');
-                              }
-                            }}
-                            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-colors text-xs font-medium ${client.is_active ? 'bg-amber-50 text-amber-600 hover:bg-amber-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}
-                            title={client.is_active ? 'Isolir Manual' : 'Buka Isolir Manual'}
-                          >
-                            {client.is_active ? <Lock size={14} /> : <Unlock size={14} />}
-                          </button>
+                          {!client.is_archived && (
+                            <button
+                              onClick={async () => {
+                                if (!confirm(`Apakah Anda yakin ingin ${client.is_active ? 'mengisolir' : 'membuka isolir'} pelanggan ini secara manual?`)) return;
+                                try {
+                                  await axios.patch(`/api/v1/clients/${client.id}`, { is_active: !client.is_active }, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+                                  setSyncPreview(null);
+                                  fetchClients(currentPage);
+                                } catch (err) {
+                                  alert('Gagal mengubah status isolir.');
+                                }
+                              }}
+                              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-colors text-xs font-medium ${client.is_active ? 'bg-amber-50 text-amber-600 hover:bg-amber-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}
+                              title={client.is_active ? 'Isolir Manual' : 'Buka Isolir Manual'}
+                            >
+                              {client.is_active ? <Lock size={14} /> : <Unlock size={14} />}
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -402,6 +452,87 @@ export default function Clients() {
           )}
         </div>
 
+        {isSyncPreviewOpen && syncPreview && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[110] p-4">
+            <div className="bg-surface rounded-lg shadow-xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
+              <div className="px-6 py-4 border-b border-border flex justify-between items-center">
+                <div>
+                  <h3 className="font-bold text-text">Perbandingan CRM dan Winbox</h3>
+                  <p className="text-xs text-muted mt-1">Hasil pemeriksaan read-only. RouterOS belum diubah.</p>
+                </div>
+                <button onClick={() => setIsSyncPreviewOpen(false)} className="text-muted hover:text-text" title="Tutup">
+                  <X size={20}/>
+                </button>
+              </div>
+
+              <div className="overflow-y-auto">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 border-b border-border bg-gray-50">
+                  {[
+                    ['CRM', syncPreview.totalCRM],
+                    ['Winbox', syncPreview.totalRouter],
+                    ['Terhubung', syncPreview.matched],
+                    ['Impor', syncPreview.toImport],
+                    ['Perbarui', syncPreview.toUpdate],
+                    ['Arsipkan', syncPreview.toArchive]
+                  ].map(([label, value], index) => (
+                    <div key={label} className={`px-4 py-3 ${index > 0 ? 'border-l border-border' : ''}`}>
+                      <p className="text-xs text-muted">{label}</p>
+                      <p className="text-xl font-bold text-text">{value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="px-6 py-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-semibold text-text">Perubahan yang direncanakan</h4>
+                    <span className="text-xs text-muted">{syncPreview.changes.length} item</span>
+                  </div>
+
+                  {syncPreview.changes.length === 0 ? (
+                    <div className="py-10 text-center text-sm text-muted">
+                      <CheckCircle size={24} className="mx-auto mb-2 text-green-600" />
+                      Data CRM sudah sesuai dengan Winbox.
+                    </div>
+                  ) : (
+                    <div className="border border-border rounded-md overflow-hidden">
+                      <div className="max-h-80 overflow-y-auto divide-y divide-border">
+                        {syncPreview.changes.map((change) => (
+                          <div key={`${change.action}-${change.clientId}`} className="px-4 py-3 flex items-center justify-between gap-4 bg-white">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-text truncate">{change.fullname || change.clientId}</p>
+                              <p className="text-xs font-mono text-muted truncate">{change.clientId}</p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className={`text-xs font-semibold ${change.action === 'ARCHIVE_MISSING_IN_ROUTER' ? 'text-amber-700' : 'text-blue-700'}`}>
+                                {syncActionLabel[change.action] || change.action}
+                              </p>
+                              {(change.routerProfile || change.currentProfile) && (
+                                <p className="text-[11px] text-muted">
+                                  {change.currentProfile && change.routerProfile ? `${change.currentProfile} -> ${change.routerProfile}` : change.routerProfile || change.currentProfile}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="px-6 py-4 border-t border-border bg-gray-50 flex justify-end gap-3">
+                <button onClick={() => setIsSyncPreviewOpen(false)} className="px-4 py-2 text-sm font-medium text-muted hover:text-text bg-white border border-border rounded-md">
+                  Tutup
+                </button>
+                <button onClick={handleReconcile} disabled={isImporting || syncPreview.changes.length === 0} className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-md disabled:opacity-50 flex items-center gap-2">
+                  <DownloadCloud size={16}/>
+                  {isImporting ? 'Menyesuaikan...' : 'Samakan dengan Winbox'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Add Client Modal */}
         {isCreateModalOpen && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
@@ -420,6 +551,16 @@ export default function Clients() {
                   <div>
                     <label className="block text-sm font-medium text-text mb-1">WhatsApp</label>
                     <input type="text" required value={formData.whatsapp} onChange={e => setFormData({...formData, whatsapp: e.target.value})} className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" placeholder="628..." />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-text mb-1">Password Portal</label>
+                      <input type="password" required minLength="8" autoComplete="new-password" value={formData.portal_password} onChange={e => setFormData({...formData, portal_password: e.target.value})} className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-text mb-1">Password PPPoE</label>
+                      <input type="password" required minLength="8" autoComplete="new-password" value={formData.pppoe_password} onChange={e => setFormData({...formData, pppoe_password: e.target.value})} className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-text mb-1">Alamat</label>
@@ -477,18 +618,18 @@ export default function Clients() {
                 <h3 className="font-bold text-text flex items-center gap-2">
                   {isEditMode ? 'Edit Pelanggan' : 'Detail Pelanggan'} 
                   {!isEditMode && clientDetails && (
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${clientDetails.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                      {clientDetails.is_active ? 'AKTIF' : 'NONAKTIF'}
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${clientDetails.is_archived ? 'bg-gray-200 text-gray-700' : clientDetails.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                      {clientDetails.is_archived ? 'ARSIP' : clientDetails.is_active ? 'AKTIF' : 'NONAKTIF'}
                     </span>
                   )}
                 </h3>
                 <div className="flex gap-2">
-                  {!isEditMode && clientDetails?.is_active && (
+                  {!isEditMode && !clientDetails?.is_archived && clientDetails?.is_active && (
                     <button onClick={handleDeactivate} className="text-red-600 hover:text-red-700 bg-red-50 px-3 py-1.5 rounded-md text-xs font-medium flex items-center gap-1">
                       <PowerOff size={14}/> Nonaktifkan
                     </button>
                   )}
-                  {!isEditMode && clientDetails && !clientDetails.is_active && (
+                  {!isEditMode && clientDetails && !clientDetails.is_archived && !clientDetails.is_active && (
                     <button onClick={handleActivate} className="text-green-600 hover:text-green-700 bg-green-50 px-3 py-1.5 rounded-md text-xs font-medium flex items-center gap-1">
                       <CheckCircle size={14}/> Aktifkan
                     </button>
@@ -520,6 +661,10 @@ export default function Clients() {
                           <div>
                             <label className="block text-sm font-medium text-text mb-1">WhatsApp</label>
                             <input type="text" required value={formData.whatsapp} onChange={e => setFormData({...formData, whatsapp: e.target.value})} className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-text mb-1">Password Portal Baru</label>
+                            <input type="password" minLength="8" autoComplete="new-password" value={formData.portal_password} onChange={e => setFormData({...formData, portal_password: e.target.value})} className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" placeholder="Biarkan kosong bila tidak diubah" />
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-text mb-1">Alamat</label>
@@ -561,7 +706,7 @@ export default function Clients() {
                             </div>
                             <div>
                               <label className="block text-sm font-medium text-text mb-1">Status</label>
-                              <select value={formData.is_active} onChange={e => setFormData({...formData, is_active: e.target.value === 'true'})} className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-white">
+                              <select disabled={clientDetails?.is_archived} value={formData.is_active} onChange={e => setFormData({...formData, is_active: e.target.value === 'true'})} className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-white disabled:bg-gray-100">
                                 <option value="true">Aktif</option>
                                 <option value="false">Nonaktif (Isolir)</option>
                               </select>

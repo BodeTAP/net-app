@@ -11,8 +11,15 @@ const startServer = async () => {
     console.log('Connected to PostgreSQL successfully');
     client.release();
 
-    // Setup Cron Job
-    initCron();
+    const billingCronEnabled = ['true', '1', 'yes'].includes(
+      String(process.env.ENABLE_BILLING_CRON || 'false').toLowerCase()
+    );
+
+    if (billingCronEnabled) {
+      initCron();
+    } else {
+      console.log('[CRON] Billing & isolir otomatis dinonaktifkan.');
+    }
 
     app.listen(port, () => {
       console.log(`Server is running on port ${port}`);

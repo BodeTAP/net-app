@@ -1,5 +1,10 @@
 const { RouterOSClient } = require('routeros-client');
 const { query } = require('../../config/db');
+const {
+  buildNewSecret,
+  buildProfileUpdate,
+  buildSyncPreview
+} = require('./secretPolicy');
 
 const config = {
   host: process.env.MIKROTIK_HOST || '192.168.88.1',
@@ -10,6 +15,15 @@ const config = {
 };
 
 const wanIface = process.env.MIKROTIK_WAN_IFACE || 'ether1';
+const mikrotikWritesEnabled = ['true', '1', 'yes'].includes(
+  String(process.env.MIKROTIK_WRITE_ENABLED || 'false').toLowerCase()
+);
+
+const assertMikrotikWritesEnabled = () => {
+  if (!mikrotikWritesEnabled) {
+    throw new Error('Operasi tulis MikroTik dinonaktifkan. Set MIKROTIK_WRITE_ENABLED=true untuk mengaktifkannya.');
+  }
+};
 
 const execMikrotik = async (callback) => {
   const client = new RouterOSClient(config);
@@ -77,36 +91,45 @@ const getTrafficStats = async () => {
   });
 };
 
-const createQueue = async (clientId, profile, ipAddress, whatsapp) => {
-  // We use this function to create PPPoE Secret
-  const password = whatsapp || '123456';
-  
+const createPPPoESecret = async (clientId, profile, pppoePassword) => {
+  assertMikrotikWritesEnabled();
   return execMikrotik(async (conn) => {
     const menu = conn.menu('/ppp/secret');
-    
-    // Check if exists
     const exists = await menu.where('name', clientId).get();
+
     if (exists.length > 0) {
-      await menu.where('name', clientId).update({
-        password: password,
-        profile: profile || 'default',
-        disabled: 'no'
-      });
-    } else {
-      await menu.add({
-        name: clientId,
-        password: password,
-        profile: profile || 'default',
-        service: 'pppoe'
-      });
+      throw new Error(`PPPoE Secret ${clientId} sudah ada. Pembuatan dibatalkan tanpa mengubah data.`);
     }
+
+    await menu.add(buildNewSecret({
+      clientId,
+      profile,
+      password: pppoePassword
+    }));
     
-    console.log(`[MIKROTIK LIVE] ✅ PPPoE Secret dibuat/diupdate → Client: ${clientId}`);
+    console.log(`[MIKROTIK LIVE] PPPoE Secret dibuat -> Client: ${clientId}`);
     return { success: true, message: `PPPoE Secret ${clientId} berhasil dibuat.` };
   });
 };
 
+const updateSecretProfile = async (clientId, profile) => {
+  assertMikrotikWritesEnabled();
+  return execMikrotik(async (conn) => {
+    const menu = conn.menu('/ppp/secret');
+    const exists = await menu.where('name', clientId).get();
+
+    if (exists.length === 0) {
+      throw new Error(`PPPoE Secret ${clientId} tidak ditemukan. Profil tidak diubah.`);
+    }
+
+    await menu.where('name', clientId).update(buildProfileUpdate(profile));
+    console.log(`[MIKROTIK LIVE] Profil PPPoE diperbarui -> Client: ${clientId}`);
+    return { success: true, message: `Profil PPPoE ${clientId} berhasil diperbarui.` };
+  });
+};
+
 const removeQueue = async (clientId) => {
+  assertMikrotikWritesEnabled();
   return execMikrotik(async (conn) => {
     const menu = conn.menu('/ppp/secret');
     const exists = await menu.where('name', clientId).get();
@@ -129,6 +152,7 @@ const removeQueue = async (clientId) => {
 };
 
 const addToIsolir = async (ipAddress, clientId) => {
+  assertMikrotikWritesEnabled();
   return execMikrotik(async (conn) => {
     const menu = conn.menu('/ppp/secret');
     const exists = await menu.where('name', clientId).get();
@@ -151,6 +175,7 @@ const addToIsolir = async (ipAddress, clientId) => {
 };
 
 const removeFromIsolir = async (ipAddress, clientId) => {
+  assertMikrotikWritesEnabled();
   return execMikrotik(async (conn) => {
     // Cari original profile dari database
     const dbClient = await query('SELECT mikrotik_profile FROM clients WHERE id = $1', [clientId]);
@@ -176,49 +201,24 @@ const removeFromIsolir = async (ipAddress, clientId) => {
   });
 };
 
-const syncAllQueues = async () => {
-  // Sync all PPPoE Secrets
-  const result = await query('SELECT id, fullname, whatsapp, mikrotik_profile FROM clients WHERE is_active = TRUE');
+const previewPPPoESync = async () => {
+  const result = await query(`
+    SELECT id, fullname, mikrotik_profile, mikrotik_router_profile, is_active, is_archived
+    FROM clients
+  `);
   const clients = result.rows;
 
   return execMikrotik(async (conn) => {
     const menu = conn.menu('/ppp/secret');
     const existingSecrets = await menu.get();
-    
-    let synced = 0;
-    
-    for (const client of clients) {
-      const password = client.whatsapp || '123456';
-      const existing = existingSecrets.find(sec => sec.name === client.id);
-      
-      try {
-        if (existing) {
-          // Update jika sudah ada
-          await menu.where('name', client.id).update({
-            password: password,
-            profile: client.mikrotik_profile || 'default',
-            service: 'pppoe'
-          });
-        } else {
-          // Tambah baru jika belum ada
-          await menu.add({
-            name: client.id,
-            password: password,
-            profile: client.mikrotik_profile || 'default',
-            service: 'pppoe'
-          });
-        }
-        synced++;
-      } catch (err) {
-        console.error(`[MIKROTIK LIVE] Gagal sinkron klien ${client.id}:`, err.message);
-      }
-    }
-    
-    console.log(`[MIKROTIK LIVE] ✅ Sinkronisasi selesai. ${synced} PPPoE Secret di-update/dibuat dari total ${clients.length} klien aktif.`);
+    const preview = buildSyncPreview(clients, existingSecrets);
+
+    console.log(`[MIKROTIK LIVE] Pemeriksaan read-only selesai: CRM ${preview.totalCRM}, RouterOS ${preview.totalRouter}.`);
     return {
       success: true,
-      total: clients.length,
-      message: `Berhasil menyinkronkan ${synced} akun PPPoE ke MikroTik secara aman tanpa menghapus data eksisting.`,
+      dryRun: true,
+      ...preview,
+      message: `Pemeriksaan selesai tanpa mengubah MikroTik: ${preview.toImport} akan diimpor, ${preview.toUpdate} diperbarui, ${preview.toArchive} diarsipkan, ${preview.unchanged} sudah sesuai.`
     };
   });
 };
@@ -238,7 +238,13 @@ const getActiveQueues = async () => {
 
 const getPPPoESecrets = async () => {
   return execMikrotik(async (conn) => {
-    return await conn.menu('/ppp/secret').get();
+    const secrets = await conn.menu('/ppp/secret').get();
+    return secrets.map((secret) => ({
+      name: secret.name,
+      profile: secret.profile || 'default',
+      service: secret.service,
+      disabled: secret.disabled
+    }));
   });
 };
 
@@ -257,6 +263,7 @@ const getAllProfiles = async () => {
 };
 
 const createProfile = async (data) => {
+  assertMikrotikWritesEnabled();
   return execMikrotik(async (conn) => {
     await conn.menu('/ppp/profile').add({
       name: data.name,
@@ -269,6 +276,7 @@ const createProfile = async (data) => {
 };
 
 const updateProfile = async (name, data) => {
+  assertMikrotikWritesEnabled();
   return execMikrotik(async (conn) => {
     const menu = conn.menu('/ppp/profile');
     const profiles = await menu.where('name', name).get();
@@ -286,6 +294,7 @@ const updateProfile = async (name, data) => {
 };
 
 const deleteProfile = async (name) => {
+  assertMikrotikWritesEnabled();
   return execMikrotik(async (conn) => {
     const menu = conn.menu('/ppp/profile');
     const profiles = await menu.where('name', name).get();
@@ -309,11 +318,12 @@ const getIPPools = async () => {
 module.exports = {
   getSystemResource,
   getTrafficStats,
-  createQueue,
+  createPPPoESecret,
+  updateSecretProfile,
   removeQueue,
   addToIsolir,
   removeFromIsolir,
-  syncAllQueues,
+  previewPPPoESync,
   getActiveQueues,
   getPPPoESecrets,
   getAllProfiles,

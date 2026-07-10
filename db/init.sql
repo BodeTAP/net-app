@@ -32,10 +32,14 @@ CREATE TABLE IF NOT EXISTS clients (
  coordinates POINT,
  ip_address VARCHAR(45),
  mikrotik_profile VARCHAR(50) NOT NULL,
+ mikrotik_router_profile VARCHAR(50),
  monthly_fee NUMERIC(10,2) NOT NULL,
  billing_cycle_date INT DEFAULT 1,
  auto_isolir BOOLEAN DEFAULT TRUE,
  is_active BOOLEAN DEFAULT TRUE,
+ is_archived BOOLEAN NOT NULL DEFAULT FALSE,
+ archived_at TIMESTAMP,
+ mikrotik_last_seen_at TIMESTAMP,
  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -124,6 +128,10 @@ CREATE TABLE IF NOT EXISTS company_settings (
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS ip_address VARCHAR(45);
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS auto_isolir BOOLEAN DEFAULT TRUE;
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS mikrotik_router_profile VARCHAR(50);
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS is_archived BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS archived_at TIMESTAMP;
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS mikrotik_last_seen_at TIMESTAMP;
 ALTER TABLE invoices ADD COLUMN IF NOT EXISTS payment_reference VARCHAR(100);
 ALTER TABLE invoices ADD COLUMN IF NOT EXISTS payment_url TEXT;
 ALTER TABLE tickets ADD COLUMN IF NOT EXISTS assigned_technician_id INT REFERENCES users(id);
@@ -140,6 +148,8 @@ BEGIN
       FOREIGN KEY (odc_id) REFERENCES odcs(id) ON DELETE SET NULL;
   END IF;
 END $$;
+
+CREATE INDEX IF NOT EXISTS idx_clients_is_archived ON clients(is_archived);
 
 -- Practical defaults for a new local install.
 INSERT INTO internet_packages (id, name, monthly_fee, rate_limit, is_active)

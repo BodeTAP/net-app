@@ -1,7 +1,10 @@
-const { query } = require('../config/db');
+const { query, pool } = require('../config/db');
 const mikrotik = require('../services/mikrotik');
+const { buildSyncPreview, isSecretActive } = require('../services/mikrotik/secretPolicy');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
+
+const RECONCILE_CONFIRMATION = 'WINBOX_SOURCE_OF_TRUTH';
 
 const getTelemetry = async (req, res, next) => {
   try {
@@ -14,7 +17,7 @@ const getTelemetry = async (req, res, next) => {
       ORDER BY count DESC
     `);
 
-    // 2. Ambil data hardware dari MikroTik Service (mock atau live)
+    // 2. Ambil data hardware dari MikroTik Service
     const systemResource = await mikrotik.getSystemResource();
     const trafficStats = await mikrotik.getTrafficStats();
 
@@ -36,68 +39,136 @@ const getTelemetry = async (req, res, next) => {
   }
 };
 
-const syncMikrotik = async (req, res, next) => {
+const previewMikrotikSync = async (req, res, next) => {
   try {
-    const result = await mikrotik.syncAllQueues();
+    const result = await mikrotik.previewPPPoESync();
 
     res.status(200).json({
       status: 'success',
       message: result.message,
+      data: result
     });
   } catch (error) {
     next(error);
   }
 };
 
-const importMikrotik = async (req, res, next) => {
+const reconcileFromMikrotik = async (req, res, next) => {
+  if (req.body?.confirmation !== RECONCILE_CONFIRMATION) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Konfirmasi rekonsiliasi Winbox tidak valid.'
+    });
+  }
+
+  let dbClient;
+
   try {
     const secrets = await mikrotik.getPPPoESecrets();
-    
-    // Get existing clients
-    const existingRes = await query('SELECT id FROM clients');
-    const existingIds = existingRes.rows.map(r => r.id);
-    
-    let importedCount = 0;
-    
-    for (const secret of secrets) {
-      if (!existingIds.includes(secret.name)) {
-        // Prepare new client data
-        const id = secret.name;
-        const fullname = secret.name; // Use name as fullname initially
-        const mikrotikProfile = secret.profile || 'default';
-        const rawPassword = secret.password || '123456';
-        
-        // WhatsApp is set to password if it's numeric, otherwise empty string
-        const isNumeric = /^\d+$/.test(rawPassword);
-        const whatsapp = isNumeric ? rawPassword : '';
-        
-        const qrToken = crypto.randomBytes(32).toString('hex');
-        const passwordHash = await bcrypt.hash(rawPassword, 10);
-        const isActive = secret.disabled !== 'true' && secret.disabled !== true;
-        
-        await query(
-          `INSERT INTO clients (
-            id, qr_token, fullname, whatsapp, address, 
-            mikrotik_profile, monthly_fee, billing_cycle_date, 
-            is_active, password_hash
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-          [
-            id, qrToken, fullname, whatsapp, '', 
-            mikrotikProfile, 0, 1, 
-            isActive, passwordHash
-          ]
-        );
-        importedCount++;
-      }
+
+    const invalidSecrets = secrets.filter((secret) => (
+      typeof secret.name !== 'string'
+      || secret.name.length === 0
+      || secret.name.length > 50
+      || String(secret.profile || 'default').length > 50
+    ));
+
+    if (invalidSecrets.length > 0) {
+      return res.status(400).json({
+        status: 'error',
+        message: `${invalidSecrets.length} PPP Secret memiliki nama atau profil melebihi batas CRM.`
+      });
     }
-    
+
+    dbClient = await pool.connect();
+    await dbClient.query('BEGIN');
+
+    const clientsResult = await dbClient.query(`
+      SELECT id, fullname, mikrotik_profile, mikrotik_router_profile, is_active, is_archived
+      FROM clients
+      FOR UPDATE
+    `);
+    const packagesResult = await dbClient.query('SELECT name, monthly_fee FROM internet_packages');
+    const packageFees = new Map(packagesResult.rows.map((pkg) => [pkg.name, pkg.monthly_fee]));
+    const existingById = new Map(clientsResult.rows.map((client) => [client.id, client]));
+    const plan = buildSyncPreview(clientsResult.rows, secrets);
+
+    for (const secret of secrets) {
+      const routerProfile = secret.profile || 'default';
+      const desiredProfile = routerProfile.toUpperCase() === 'EXPIRED' ? 'default' : routerProfile;
+      const active = isSecretActive(secret);
+      const existing = existingById.get(secret.name);
+
+      if (existing) {
+        await dbClient.query(`
+          UPDATE clients
+          SET mikrotik_profile = CASE
+                WHEN UPPER($2) = 'EXPIRED' THEN mikrotik_profile
+                ELSE $2
+              END,
+              mikrotik_router_profile = $2,
+              is_active = $3,
+              is_archived = FALSE,
+              archived_at = NULL,
+              mikrotik_last_seen_at = CURRENT_TIMESTAMP
+          WHERE id = $1
+        `, [secret.name, routerProfile, active]);
+        continue;
+      }
+
+      const temporaryPortalPassword = crypto.randomBytes(24).toString('base64url');
+      const passwordHash = await bcrypt.hash(temporaryPortalPassword, 10);
+      const monthlyFee = packageFees.get(desiredProfile) || 0;
+
+      await dbClient.query(`
+        INSERT INTO clients (
+          id, qr_token, fullname, whatsapp, address,
+          mikrotik_profile, mikrotik_router_profile, monthly_fee,
+          billing_cycle_date, auto_isolir, is_active, is_archived,
+          mikrotik_last_seen_at, password_hash
+        ) VALUES ($1, $2, $3, '', '', $4, $5, $6, 1, TRUE, $7, FALSE, CURRENT_TIMESTAMP, $8)
+      `, [
+        secret.name,
+        crypto.randomUUID(),
+        secret.name,
+        desiredProfile,
+        routerProfile,
+        monthlyFee,
+        active,
+        passwordHash
+      ]);
+    }
+
+    const archiveIds = plan.changes
+      .filter((change) => change.action === 'ARCHIVE_MISSING_IN_ROUTER')
+      .map((change) => change.clientId);
+
+    if (archiveIds.length > 0) {
+      await dbClient.query(`
+        UPDATE clients
+        SET is_archived = TRUE,
+            archived_at = CURRENT_TIMESTAMP,
+            is_active = FALSE,
+            mikrotik_last_seen_at = NULL
+        WHERE id = ANY($1::varchar[])
+      `, [archiveIds]);
+    }
+
+    await dbClient.query('COMMIT');
+
     res.status(200).json({
       status: 'success',
-      message: `Berhasil menarik ${importedCount} pelanggan baru dari MikroTik.`,
-      imported: importedCount
+      message: `Data CRM disesuaikan dengan Winbox tanpa mengubah RouterOS: ${plan.toImport} diimpor, ${plan.toUpdate} diperbarui, ${plan.toArchive} diarsipkan.`,
+      data: {
+        ...plan,
+        changes: undefined
+      }
     });
   } catch (error) {
+    if (dbClient) await dbClient.query('ROLLBACK');
     next(error);
+  } finally {
+    if (dbClient) dbClient.release();
   }
 };
 
@@ -156,8 +227,8 @@ const getIPPools = async (req, res, next) => {
 
 module.exports = { 
   getTelemetry, 
-  syncMikrotik, 
-  importMikrotik,
+  previewMikrotikSync,
+  reconcileFromMikrotik,
   getProfiles,
   createProfile,
   updateProfile,
